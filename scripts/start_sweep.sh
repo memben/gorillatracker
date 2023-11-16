@@ -2,7 +2,7 @@
 
 # Set Mamba to use the correct environment
 # eval "$(micromamba shell hook --shell=)"
-# micromamba activate researcha # replace with your environment name
+# micromamba activate research # replace with your environment name
 
 # Set your WandB API Key
 # export WANDB_API_KEY="your-wandb-api-key" # should be in .netrc

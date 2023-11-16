@@ -42,6 +42,8 @@ dependencies:
   # Dev dependencies
   - black
   - ruff
+  - isort
+  - mypy 
 
   # pip dependencies
   - pip
