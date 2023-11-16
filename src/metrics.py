@@ -17,7 +17,6 @@ def log_as_wandb_table(embeddings_table, run):
     run.log({"embeddings": wandb.Table(dataframe=tmp)})
 
 
-# TODO: also log at the end of the training
 class LogEmbeddingsToWandbCallback(L.Callback):
     """
     A pytorch lightning callback that saves embeddings to wandb and logs them.
@@ -161,7 +160,6 @@ def fc_layer(embeddings, labels, batch_size=64, epochs=300, seed=42, num_classes
 
 # Vincents code
 def knn(embeddings, labels, k=5, num_classes=10):
-    # k = len(np.unique(labels))
     # convert embeddings and labels to tensors
     embeddings = torch.tensor(embeddings)
     labels = torch.tensor(labels)
@@ -221,10 +219,8 @@ def pca(embeddings, labels, num_classes=10):  # generate a 2D plot of the embedd
     return plot
 
 
-# NOTE: pca first to 50 dimensions and then tsne to 2 dimensions
 def tsne(embeddings, labels, pca=False, count=1000, num_classes=10):  # generate a 2D plot of the embeddings
     # downsample the embeddings and also the labels to 1000 samples
-    labels_cpy = labels.copy()
     indices = np.random.choice(len(embeddings), min(count, len(labels)), replace=False)
     embeddings = embeddings[indices]
     labels = labels[indices]

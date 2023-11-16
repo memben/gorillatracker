@@ -1,4 +1,4 @@
-name: yolo_environment
+name: research
 channels:
   - conda-forge
   - nvidia # nvidia channel for cuda packages

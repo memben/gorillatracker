@@ -18,8 +18,9 @@ from src.metrics import LogEmbeddingsToWandbCallback
 from src.data_loading import GorillaDM
 from src.helpers import (
     check_checkpoint_path_for_wandb,
+    check_for_wandb_checkpoint_and_download_if_necessary,
 )
-from src.model import EfficientNetV2Wrapper
+from src.model import get_model_cls
 
 WANDB_PROJECT = "MNIST-EfficientNetV2"
 WANDB_ENTITY = "gorillas"
@@ -94,23 +95,37 @@ def main(args: TrainingArgs):
         lr_decay_interval=args.lr_decay_interval,
         margin=args.margin,
     )
-    # if not args.from_scratch:
+    # NOTE: should be fine right now
+    # TODO(liamvdv): support resuming from checkpoint? Clear interpretation of
+    #                args.from_scratch, args.resume and arg.saved_checkpoint_path
+    # if args.resume:  # load weights, optimizer states, scheduler state, ...\
     #     args.saved_checkpoint_path = check_for_wandb_checkpoint_and_download_if_necessary(
     #         args.saved_checkpoint_path, wandb_logger.experiment
     #     )
 
-    #     if args.resume:  # load weights, optimizer states, scheduler state, ...\
-    #         model = EfficientNetV2Wrapper.load_from_checkpoint(args.saved_checkpoint_path, save_hyperparameters=False)
-    #         # we will resume via trainer.fit(ckpt_path=...)
-    #     else:  # load only weights
-    #         model = EfficientNetV2Wrapper(**model_args)
-    #         torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device("cpu"))
-    #         model.load_state_dict(torch_load["state_dict"], strict=False)
-    # else:
+    #     model = EfficientNetV2Wrapper.load_from_checkpoint(args.saved_checkpoint_path, save_hyperparameters=False)
+    #     # we will resume via trainer.fit(ckpt_path=...)
+    # else:  # load only weights
+    #     model = EfficientNetV2Wrapper(**model_args)
+    #     torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device("cpu"))
+    #     model.load_state_dict(torch_load["state_dict"], strict=False)
 
-    model = EfficientNetV2Wrapper(**model_args)
+    model_cls = get_model_cls(args.model_name_or_path)
 
-    # wandb_logger.watch(model, log="all", log_freq=500, log_graph=False)
+    if args.saved_checkpoint_path is None:
+        args.saved_checkpoint_path = check_for_wandb_checkpoint_and_download_if_necessary(
+            args.saved_checkpoint_path, wandb_logger.experiment
+        )
+
+        if args.resume:  # load weights, optimizer states, scheduler state, ...\
+            model = model_cls.load_from_checkpoint(args.saved_checkpoint_path, save_hyperparameters=False)
+            # we will resume via trainer.fit(ckpt_path=...)
+        else:  # load only weights
+            model = model_cls(**model_args)
+            torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device("cpu"))
+            model.load_state_dict(torch_load["state_dict"], strict=False)
+    else:
+        model = model_cls(**model_args)
 
     # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
     torch.set_float32_matmul_precision("high")
@@ -213,9 +228,9 @@ if __name__ == "__main__":
     print("Starting training script...")
     config_path = "./cfgs/config.yml"
     print("Parsing config from {}...")
-    parsed_arg_groups = parse(
-        TrainingArgs, config_path=config_path
-    )  # parse args and add --config_path *(add_config_path_arg=True)*
+    parsed_arg_groups = parse(TrainingArgs, config_path=config_path)
+    # parses the config file as default and overwrites with command line arguments
+    # therefore allowing sweeps to overwrite the defaults in config file
     current_process_rank = get_rank()
     with graceful_exceptions(extra_message=f"Rank: {current_process_rank}"):
         main(parsed_arg_groups)
