@@ -1,14 +1,14 @@
 import lightning as L
-import wandb
-import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
-import torchmetrics as tm
-import torch
+import pandas as pd
+import seaborn as sns
 import sklearn
+import torch
+import torchmetrics as tm
+import wandb
 from sklearn.manifold import TSNE
 from torchmetrics.functional import pairwise_euclidean_distance
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 def log_as_wandb_table(embeddings_table, run):
