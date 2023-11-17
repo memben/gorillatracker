@@ -146,3 +146,4 @@ yolov8n.pt
 /runs
 /checkpoints
 /gorillavision
+.ruff_cache

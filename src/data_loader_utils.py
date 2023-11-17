@@ -122,7 +122,7 @@ class TripletSampler(Sampler):
 
 def TripletDataLoader(dataset, batch_size):
     """
-    TripletDataLoader will take any Dataset that returns a single sample in the form of 
+    TripletDataLoader will take any Dataset that returns a single sample in the form of
     (value, label) on __getitem__ and transform it into an efficient Triplet DataLoader.
     """
     label_sorted_dataset = sorted(dataset, key=lambda t: t[1])
