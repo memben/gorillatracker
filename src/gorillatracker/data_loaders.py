@@ -66,7 +66,11 @@ def randint_except(start: int, end: int, excluded: int) -> int:
             return idx
 
 
-class ToTripletDataset:
+class ToNthDataset:
+    """
+    ToNthDataset allows N index accesses at once on a single index access Dataset.
+    """
+
     def __init__(self, dataset, transform=lambda x: x):
         self.dataset = dataset
         self.transform = transform
@@ -77,22 +81,20 @@ class ToTripletDataset:
     def __getitem__(self, idxs):
         if torch.is_tensor(idxs):
             idxs = idxs.tolist()
-        a, p, n = idxs
-        xa, ya = self.dataset[a]
-        xa = self.transform(xa)
-        xp, yp = self.dataset[p]
-        xp = self.transform(xp)
-        xn, yn = self.dataset[n]
-        xn = self.transform(xn)
-        return (xa, xp, xn), (ya, yp, yn)
+
+        xs, ys = [], []
+        for idx in idxs:
+            x, y = self.dataset[idx]
+            x = self.transform(x)
+            xs.append(x)
+            ys.append(y)
+
+        return tuple(xs), tuple(ys)
 
 
 class TripletSampler(Sampler):
-    """
-    dataset must not be shuffled
-    """
+    """Do not use shuffle=True with TripletSampler, control shuffling via shuffled_indices_generator."""
 
-    # dataset must be label sorted!
     def __init__(self, sorted_dataset, shuffled_indices_generator=index_permuation_generator):
         self.dataset = sorted_dataset
         self.n = len(self.dataset)
@@ -120,6 +122,23 @@ class TripletSampler(Sampler):
             yield anchor, positive, negative
 
 
+class QuadletSampler(TripletSampler):
+    """Do not use shuffle=True with QuadletSampler, control shuffling via shuffled_indices_generator."""
+
+    def __iter__(self):
+        anchor_shuffle = next(self.shuffled_indices_generator)
+        for anchor_positive in anchor_shuffle:
+            anchor_p_label = self.dataset[anchor_positive][1]
+            pstart, plength = self.labelsection[anchor_p_label]
+            positive = randint_except(pstart, pstart + plength, anchor_positive)
+
+            anchor_negative = self.any_sample_not(anchor_p_label)
+            negative_label = self.dataset[anchor_negative][1]
+            nstart, nlength = self.labelsection[negative_label]
+            negative = randint_except(nstart, nstart + nlength, anchor_negative)
+            yield anchor_positive, positive, anchor_negative, negative
+
+
 def TripletDataLoader(dataset, batch_size):
     """
     TripletDataLoader will take any Dataset that returns a single sample in the form of
@@ -127,5 +146,16 @@ def TripletDataLoader(dataset, batch_size):
     """
     label_sorted_dataset = sorted(dataset, key=lambda t: t[1])
     sampler = TripletSampler(label_sorted_dataset)
-    final_dataset = ToTripletDataset(label_sorted_dataset)
+    final_dataset = ToNthDataset(label_sorted_dataset)
+    return DataLoader(final_dataset, sampler=sampler, shuffle=False, batch_size=batch_size)
+
+
+def QuadletDataLoader(dataset, batch_size):
+    """
+    QuadletDataLoader will take any Dataset that returns a single sample in the form of
+    (value, label) on __getitem__ and transform it into an efficient Quadlet DataLoader.
+    """
+    label_sorted_dataset = sorted(dataset, key=lambda t: t[1])
+    sampler = QuadletSampler(label_sorted_dataset)
+    final_dataset = ToNthDataset(label_sorted_dataset)
     return DataLoader(final_dataset, sampler=sampler, shuffle=False, batch_size=batch_size)

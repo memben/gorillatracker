@@ -12,7 +12,9 @@ from torchmetrics.functional import pairwise_euclidean_distance
 
 
 def log_as_wandb_table(embeddings_table, run):
-    tmp = embeddings_table.apply(lambda row: pd.concat([pd.Series([row["label"]]), pd.Series(row["embedding"])]), axis=1)
+    tmp = embeddings_table.apply(
+        lambda row: pd.concat([pd.Series([row["label"]]), pd.Series(row["embedding"])]), axis=1
+    )
     tmp.columns = ["label"] + [f"embedding_{i}" for i in range(len(embeddings_table["embedding"].iloc[0]))]
     run.log({"embeddings": wandb.Table(dataframe=tmp)})
 
@@ -39,7 +41,9 @@ class LogEmbeddingsToWandbCallback(L.Callback):
         current_epoch = trainer.current_epoch
 
         if (
-            current_epoch % self.every_n_val_epochs == 0 and current_epoch not in self.logged_epochs and current_epoch != 0
+            current_epoch % self.every_n_val_epochs == 0
+            and current_epoch not in self.logged_epochs
+            and current_epoch != 0
         ) or (trainer.max_epochs - 1 == current_epoch):
             self.logged_epochs.add(current_epoch)
 
@@ -152,9 +156,13 @@ def fc_layer(embeddings, labels, batch_size=64, epochs=300, seed=42, num_classes
     accuracy = tm.functional.accuracy(
         final_outputs, labels, task="multiclass", num_classes=num_classes, average="weighted"
     ).item()
-    accuracy_top5 = tm.functional.accuracy(final_outputs, labels, task="multiclass", num_classes=num_classes, top_k=5).item()
+    accuracy_top5 = tm.functional.accuracy(
+        final_outputs, labels, task="multiclass", num_classes=num_classes, top_k=5
+    ).item()
     auroc = tm.functional.auroc(final_outputs, labels, task="multiclass", num_classes=num_classes).item()
-    f1 = tm.functional.f1_score(final_outputs, labels, task="multiclass", num_classes=num_classes, average="weighted").item()
+    f1 = tm.functional.f1_score(
+        final_outputs, labels, task="multiclass", num_classes=num_classes, average="weighted"
+    ).item()
     return {"accuracy": accuracy, "accuracy_top5": accuracy_top5, "auroc": auroc, "f1": f1}
 
 
@@ -206,7 +214,9 @@ def pca(embeddings, labels, num_classes=10):  # generate a 2D plot of the embedd
     # plot embeddings
 
     plt.figure()
-    plot = sns.scatterplot(x=embeddings[:, 0], y=embeddings[:, 1], palette=sns.color_palette("hls", num_classes), hue=labels)
+    plot = sns.scatterplot(
+        x=embeddings[:, 0], y=embeddings[:, 1], palette=sns.color_palette("hls", num_classes), hue=labels
+    )
     # ignore outliers when calculating the axes limits
     x_min, x_max = np.percentile(embeddings[:, 0], [0.1, 99.9])
     y_min, y_max = np.percentile(embeddings[:, 1], [0.1, 99.9])
