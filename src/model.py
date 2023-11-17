@@ -1,5 +1,5 @@
 import importlib
-
+from typing import Literal
 import lightning as L
 import pandas as pd
 import torch
@@ -162,13 +162,12 @@ class TripletLossOnline(nn.Module):
             pos_mask = get_distance_mask(labels, valid="pos")
             neg_mask = get_distance_mask(labels, valid="neg")
             # get max distance to positive
-            really_high_value = 10 ^ 30  # TODO: find a better way to do this
+
+            # TODO: find a better way to do this
             pos_max, pos_max_indices = torch.max(anchor_positive_dists.squeeze(2) * pos_mask, dim=1)  # for 2nd dim
             neg_min, neg_min_indices = torch.min(
-                anchor_negative_dists.squeeze(1) + (((1.0 - neg_mask.int()) * really_high_value)), dim=1
+                anchor_negative_dists.squeeze(1) + (((1.0 - neg_mask.int()) * (1 / eps))), dim=1
             )  # for 3nd dim
-            print(pos_max)
-            print(neg_min)
 
             hard_mask = torch.zeros(len(embeddings), len(embeddings), len(embeddings))
             hard_mask[torch.arange(len(embeddings)), pos_max_indices, neg_min_indices] = 1
@@ -176,7 +175,6 @@ class TripletLossOnline(nn.Module):
         # triplet_loss *= 1 - hard_mask
         # easy triplets have negative loss values
         triplet_loss *= hard_mask
-        print(triplet_loss)
         triplet_loss = F.relu(triplet_loss)
 
         # step 4 - compute scalar loss value by averaging positive losses
