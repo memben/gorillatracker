@@ -45,7 +45,7 @@
         "source=${localEnv:HOME}/.cache,target=/home/mamba/.cache,type=bind", // general cache directory
         // "source=/scratch1/wildlife_conservation/data/face_detection,target=/workspaces/gorillavision/datasets/face_detection,type=bind,ro"
         // "source=/scratch1/wildlife_conservation/data/all_gorillas/cxl/face_images_grouped,target=/workspaces/gorillavision/datasets/cxl/face_images_grouped,type=bind,ro"
-        "source=/scratch1/wildlife_conservation/data/gorilla_experiment_splits/train_test_distinct/cxl-bristol_0_75,target=/workspaces/gorillavision/datasets/cxl-bristol_0_75,type=bind,ro",
+        "source=/scratch1/wildlife_conservation/data/gorilla_experiment_splits/train_test_distinct/cxl-bristol_0_75,target=/workspaces/gorillatracker/datasets/cxl-bristol_0_75,type=bind,ro"
     ],
     "remoteEnv": {
         "WANDB_API_KEY": "${localEnv:WANDB_API_KEY}",
@@ -86,7 +86,7 @@
             ]
         }
     },
-    "postCreateCommand": "pipx install conda-lock"
+    "postCreateCommand": "pip install -e ."
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": []
 }

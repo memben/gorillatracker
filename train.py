@@ -14,13 +14,13 @@ from simple_parsing import parse
 
 from args import TrainingArgs
 from dlib import CUDAMetricsCallback, WandbCleanupDiskAndCloudSpaceCallback, get_rank, wait_for_debugger
-from src.metrics import LogEmbeddingsToWandbCallback
-from src.data_loading import GorillaDM
-from src.helpers import (
+from gorillatracker.metrics import LogEmbeddingsToWandbCallback
+from gorillatracker.data_module_bristol import GorillaDM
+from gorillatracker.helpers import (
     check_checkpoint_path_for_wandb,
     check_for_wandb_checkpoint_and_download_if_necessary,
 )
-from src.model import get_model_cls
+from gorillatracker.model import get_model_cls
 
 WANDB_PROJECT = "MNIST-EfficientNetV2"
 WANDB_ENTITY = "gorillas"
@@ -53,7 +53,9 @@ def main(args: TrainingArgs):
 
     if args.saved_checkpoint_path and args.resume and check_checkpoint_path_for_wandb(args.saved_checkpoint_path):
         logger.info("Resuming training from W&B")
-        wandb_extra_args = dict(id=check_checkpoint_path_for_wandb(args.saved_checkpoint_path), resume="must")  # resume W&B run
+        wandb_extra_args = dict(
+            id=check_checkpoint_path_for_wandb(args.saved_checkpoint_path), resume="must"
+        )  # resume W&B run
 
     wandb_logger = WandbLogger(
         project=WANDB_PROJECT,
@@ -149,7 +151,9 @@ def main(args: TrainingArgs):
         wandb_run=wandb_logger.experiment,
     )
 
-    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(cleanup_local=True, cleanup_online=False, size_limit=20)
+    wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(
+        cleanup_local=True, cleanup_online=False, size_limit=20
+    )
     checkpoint_callback = ModelCheckpoint(
         filename="snap-{epoch}-samples-loss-{val_loss:.2f}",
         monitor="val_loss",
@@ -164,7 +168,13 @@ def main(args: TrainingArgs):
         patience=args.early_stopping_patience,
     )
 
-    callbacks = [checkpoint_callback, wandb_disk_cleanup_callback, lr_monitor, early_stopping, embeddings_logger_callback]
+    callbacks = [
+        checkpoint_callback,
+        wandb_disk_cleanup_callback,
+        lr_monitor,
+        early_stopping,
+        embeddings_logger_callback,
+    ]
     if args.accelerator == "cuda":
         callbacks.append(CUDAMetricsCallback())
 

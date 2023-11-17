@@ -1,11 +1,81 @@
-[tool.black]
-line-length = 128
-target-version = ['py310']
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
+
+[project]
+name = 'gorillatracker'
+version = "0.0.1"
+description = 'The GorillaTracker BP library'
+authors = [{name = 'Liam van der Viven', email = 'liam.vanderviven@student.hpi.de'} , {name = 'Kajo Kratzenstein', email = 'kajo.kratzenstein@student.hpi.de'}, {name = 'Ben Meyer-Meisel', email = 'ben.meyermeisel@student.hpi.de'}, {name = 'Robert Weeke', email = 'robert.weeke@student.hpi.de'}, {name = 'Bennet Kampe', email = 'bennet.kampe@student.hpi.de'}, {name = 'Emirhan Dogan', email = 'emirhan.dogan@student.hpi.de'}, {name = 'Vincent Eberstein', email = 'vincent.eberstein@student.hpi.de'}, {name = 'Joscha Schroff', email = 'joscha.schroff@student.hpi.de'}]
+license = {file = 'LICENSE'}
+readme = 'README.md'
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3 :: Only',
+    'Intended Audience :: Developers',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Topic :: Internet',
+]
+requires-python = '>=3.7'
+# dependencies = ['boto3==1.28.69']
+optional-dependencies = { }
+
+
+[project.scripts]
+banana = "gorillatracker.cli:cli"
+
+[project.urls]
+Homepage = 'https://github.com/liamvdv/gorillatracker'
+Documentation = 'https://github.com/liamvdv/gorillatracker'
+Source = 'https://github.com/liamvdv/gorillatracker'
+Changelog = 'https://github.com/liamvdv/gorillatracker'
+
+[tool.pytest.ini_options]
+testpaths = 'tests'
+filterwarnings = [
+    'error',
+]
 
 [tool.ruff]
-line-length = 128
-target-version = 'py310'
-ignore-init-module-imports = true
-ignore = ['E203', 'E501']
-# E203: See https://github.com/PyCQA/pycodestyle/issues/373
-# E501: Disable line length error
+line-length = 120
+extend-select = ['Q', 'RUF100', 'C90']
+flake8-quotes = {inline-quotes = 'double', multiline-quotes = 'double'}
+mccabe = { max-complexity = 14 }
+
+[tool.ruff.per-file-ignores]
+
+[tool.black]
+color = true
+line-length = 120
+target-version = ['py39'] # default
+# skip-string-normalization = true
+
+
+[tool.isort]
+line_length = 120
+known_first_party = 'gorillatracker'
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+
+[tool.mypy]
+python_version = '3.9'
+show_error_codes = true
+follow_imports = 'silent'
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+warn_unused_configs = true
+disallow_subclassing_any = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_calls = true
+
+# for strict mypy
+disallow_untyped_defs = true

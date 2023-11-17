@@ -1,4 +1,6 @@
 import importlib
+
+from typing import Literal
 import lightning as L
 import pandas as pd
 import torch
@@ -6,7 +8,7 @@ import torch.nn as nn
 from print_on_steroids import logger
 from torch.optim import Adam
 from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
-from src.triplet_loss import get_triplet_loss
+from gorillatracker.triplet_loss import get_triplet_loss
 
 
 class BaseModule(L.LightningModule):
