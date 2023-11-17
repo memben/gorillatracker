@@ -49,10 +49,29 @@ def get_triplet_mask(labels):
     # shape: (batch_size, 1, batch_size)
     i_equal_k = labels_equal.unsqueeze(1).repeat(1, batch_size, 1)
     # shape: (batch_size, batch_size, batch_size)
+
     valid_indices = torch.logical_and(i_equal_j, torch.logical_not(i_equal_k))
 
     # step 3 - combine two masks
     mask = torch.logical_and(distinct_indices, valid_indices)
+
+    return mask
+
+
+def get_distance_mask(labels, valid: Literal["pos", "neg"] = "neg"):
+    # shape: (batch_size, batch_size)
+    batch_size = labels.size()[0]
+    indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
+    # shape: (batch_size, batch_size)
+    indices_not_equal = torch.logical_not(indices_equal)
+
+    # shape: (batch_size, batch_size)
+    if valid == "pos":
+        labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
+        mask = torch.logical_and(labels_equal, indices_not_equal)
+    elif valid == "neg":
+        labels_not_equal = labels.unsqueeze(0) != labels.unsqueeze(1)
+        mask = torch.logical_and(labels_not_equal, indices_not_equal)
 
     return mask
 
@@ -102,9 +121,10 @@ class TripletLossOnline(nn.Module):
       margin: Margin value in the Triplet Loss equation
     """
 
-    def __init__(self, margin=1.0):
+    def __init__(self, margin=1.0, hard=True):
         super().__init__()
         self.margin = margin
+        self.hard = hard
 
     def forward(self, embeddings, labels):
         """computes loss value.
@@ -135,11 +155,35 @@ class TripletLossOnline(nn.Module):
         # shape: (batch_size, batch_size, batch_size)
         mask = get_triplet_mask(labels)
         triplet_loss *= mask
+
+        hard_mask = torch.zeros(len(embeddings), len(embeddings), len(embeddings))
+        if self.hard:  # 🍑
+            # only keep the positive with max distance and negative with min distance
+            pos_mask = get_distance_mask(labels, valid="pos")
+            neg_mask = get_distance_mask(labels, valid="neg")
+            # get max distance to positive
+            really_high_value = 10 ^ 30  # TODO: find a better way to do this
+            pos_max, pos_max_indices = torch.max(anchor_positive_dists.squeeze(2) * pos_mask, dim=1)  # for 2nd dim
+            neg_min, neg_min_indices = torch.min(
+                anchor_negative_dists.squeeze(1) + (((1.0 - neg_mask.int()) * really_high_value)), dim=1
+            )  # for 3nd dim
+            print(pos_max)
+            print(neg_min)
+
+            hard_mask = torch.zeros(len(embeddings), len(embeddings), len(embeddings))
+            hard_mask[torch.arange(len(embeddings)), pos_max_indices, neg_min_indices] = 1
+
+        # triplet_loss *= 1 - hard_mask
         # easy triplets have negative loss values
+        triplet_loss *= hard_mask
+        print(triplet_loss)
         triplet_loss = F.relu(triplet_loss)
 
         # step 4 - compute scalar loss value by averaging positive losses
-        num_positive_losses = (mask.float() > eps).float().sum()
+        if not self.hard:
+            num_positive_losses = (mask.float() > eps).float().sum()
+        else:
+            num_positive_losses = len(embeddings)  # only one triplet (the hardest) per anchor
         triplet_loss = triplet_loss.sum() / (num_positive_losses + eps)
 
         return triplet_loss
@@ -362,3 +406,42 @@ def get_model_cls(model_name: str):
         module, cls = model_name.rsplit(".", 1)
         model_cls = getattr(importlib.import_module(module), cls)
     return model_cls
+
+
+if __name__ == "__main__":
+    # test TripletLossOnline with hard=True
+    batch_size = 4
+    embedding_dim = 2
+    margin = 1.0
+    triplet_loss = TripletLossOnline(margin=margin, hard=True)
+    embeddings = torch.tensor([[1.0], [0.5], [-1.0], [0.0]])
+    labels = torch.tensor([0, 0, 1, 1])
+
+    loss_manual_1 = torch.relu(
+        torch.linalg.vector_norm(embeddings[0] - embeddings[1])
+        - torch.linalg.vector_norm(embeddings[0] - embeddings[3])
+        + margin
+    )
+    loss_manual_2 = torch.relu(
+        torch.linalg.vector_norm(embeddings[1] - embeddings[0])
+        - torch.linalg.vector_norm(embeddings[1] - embeddings[3])
+        + margin
+    )
+    loss_manual_3 = torch.relu(
+        torch.linalg.vector_norm(embeddings[2] - embeddings[3])
+        - torch.linalg.vector_norm(embeddings[2] - embeddings[1])
+        + margin
+    )
+    loss_manual_4 = torch.relu(
+        torch.linalg.vector_norm(embeddings[3] - embeddings[2])
+        - torch.linalg.vector_norm(embeddings[3] - embeddings[1])
+        + margin
+    )
+    print(loss_manual_1)
+    print(loss_manual_2)
+    print(loss_manual_3)
+    print(loss_manual_4)
+    loss_manual = (loss_manual_1 + loss_manual_2 + loss_manual_3 + loss_manual_4) / 4
+    loss = triplet_loss(embeddings, labels)
+    print(loss_manual)
+    print(loss)
