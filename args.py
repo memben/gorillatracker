@@ -47,6 +47,7 @@ class TrainingArgs:
     lr_decay: float = field(default=0.97)
     lr_decay_interval: int = field(default=3)
     margin: float = field(default=0.5)
+    loss_mode: Literal["soft", "hard", "semi-hard", "semi-hard->hard"] = field(default="semi-hard")
 
     batch_size: int = field(default=8)
     grad_clip: float = field(default=1.0)

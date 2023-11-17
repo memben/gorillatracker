@@ -94,6 +94,7 @@ def main(args: TrainingArgs):
         lr_decay=args.lr_decay,
         lr_decay_interval=args.lr_decay_interval,
         margin=args.margin,
+        loss_mode=args.loss_mode,
     )
     # NOTE: should be fine right now
     # TODO(liamvdv): support resuming from checkpoint? Clear interpretation of

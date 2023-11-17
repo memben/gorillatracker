@@ -1,5 +1,4 @@
 import wandb
-import sys
 
 # Define your sweep configuration
 sweep_config = {
@@ -9,12 +8,12 @@ sweep_config = {
     "metric": {"goal": "minimize", "name": "train_loss"},  # Specify the metric to optimize
     "parameters": {
         # "param1": {"min": 1, "max": 10},  # Define parameter search space
-        "batch_size": {"values": [32, 64]},
+        "loss_mode": {"values": ["semi-hard", "hard", "soft", "semi-hard->hard"]},
         # Add other parameters as needed
     },
 }
 # Initialize the sweep
-project_name = "test_sweep"
+project_name = "test_losses"
 entity = "gorillas"
 sweep_id = wandb.sweep(sweep=sweep_config, project=project_name, entity=entity)
 # Print the sweep ID directly

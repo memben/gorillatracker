@@ -11,4 +11,4 @@
 export SWEEP_PATH=$(python ./init_sweep.py | grep SWEEP_PATH | cut -d'=' -f2)
 
 # Run the sweep agent with the training script and hyperparameters
-wandb agent --count 1 $SWEEP_PATH
+wandb agent --count 3 $SWEEP_PATH
