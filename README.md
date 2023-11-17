@@ -8,3 +8,9 @@ The GorillaTracker BP
 2. create a subclass from `gorillatracker.data_modules.TripletDataModule` and `gorillatracker.data_modules.QuadletDataModule` in `gorillatracker.data_module_<name>.py`, implement `get_dataset_class` and `get_transforms`.
 
 You can now use the data module exposed in `gorillatracker.data_module_<name>.py` for online and offline triplet loss. All the sampling for triplet generation is ready build. 
+
+
+# Statistics
+
+ground_truth/
+  cxl/ contains 952 images of 120 individuals  
