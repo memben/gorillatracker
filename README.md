@@ -10,7 +10,9 @@ The GorillaTracker BP
 You can now use the data module exposed in `gorillatracker.data_module_<name>.py` for online and offline triplet loss. All the sampling for triplet generation is ready build. 
 
 
-# Statistics
+# Statistcs
 
-ground_truth/
+```bash
+ground_truth/ 
   cxl/ contains 952 images of 120 individuals  
+```
