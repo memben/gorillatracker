@@ -32,13 +32,13 @@ class MNISTQuadletDataModule(QuadletDataModule):
 
 
 if __name__ == "__main__":
-    mnist_dm = MNISTTripletDataModule("./minst")
+    mnist_dm = MNISTTripletDataModule("./mnist")
     mnist_dm.setup("test")
     for images, labels in mnist_dm.test_dataloader():
         print(labels)
         exit(1)
 
-    mnist_dm = MNISTQuadletDataModule("./minst")
+    mnist_dm = MNISTQuadletDataModule("./mnist")
     mnist_dm.setup("test")
     for v in mnist_dm.test_dataloader():
         print(v)
