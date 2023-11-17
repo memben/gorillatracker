@@ -3,7 +3,7 @@
 {
     "name": "bp_devcontainer:1.0.2",
     // Put your own built docker image here
-    "image": "rob2u/bp_devcontainer:1.0.2", //rob2u
+    "image": "liamvdv/gorillatracker-ubuntu-dev",
     //-------------------------------------------------
     // ---- Alternative: let VS Code build the image---
     // ------------------------------------------------

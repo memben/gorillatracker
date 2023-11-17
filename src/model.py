@@ -1,13 +1,13 @@
+import importlib
+
 import lightning as L
-from print_on_steroids import logger
-import torch
-from torch.optim import Adam
 import pandas as pd
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Literal
-from torchvision.models import efficientnet_v2_l, EfficientNet_V2_L_Weights
-import importlib
+from print_on_steroids import logger
+from torch.optim import Adam
+from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
 
 eps = 1e-16  # an arbitrary small value to be used for numerical stability tricks
 

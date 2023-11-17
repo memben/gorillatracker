@@ -1,24 +1,23 @@
-from typing import TYPE_CHECKING, Tuple
 import os
-from print_on_steroids import logger
-from PIL import Image
-
-import torch
 import random
+from typing import TYPE_CHECKING, Tuple
+
+# from torchvision import transforms
+import lightning as L
+import torch
+from PIL import Image
+from print_on_steroids import logger
+
+# from torch import nn
+from torch.utils.data import DataLoader, Dataset, Sampler
+from torchvision.datasets import MNIST
+from torchvision.transforms import RandAugment
+from torchvision.transforms.functional import pad, resize, to_tensor
 
 # import time
 
 # import model
 
-# from torch import nn
-from torch.utils.data import Dataset, DataLoader, Sampler
-from torchvision.transforms.functional import to_tensor, resize, pad
-from torchvision.transforms import RandAugment
-
-from torchvision.datasets import MNIST
-
-# from torchvision import transforms
-import lightning as L
 
 if TYPE_CHECKING:
     from train import TrainingArgs

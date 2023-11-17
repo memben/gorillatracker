@@ -8,7 +8,7 @@
 # The syntax line above is crucial to enable variable expansion for type=cache=mount commands
 
 # We can use the OS_PREFIX build arg to choose between ubi8 and ubuntu as base image (for amd64 processor architecture)
-ARG OS_SELECTOR=ubi8
+ARG OS_SELECTOR=ubuntu
 
 # Load micromamba container to copy from later
 FROM --platform=$TARGETPLATFORM mambaorg/micromamba:1.4.2 as micromamba
@@ -88,6 +88,9 @@ COPY --from=micromamba /usr/local/bin/_dockerfile_setup_root_prefix.sh /usr/loca
 RUN /usr/local/bin/_dockerfile_initialize_user_accounts.sh && \
     /usr/local/bin/_dockerfile_setup_root_prefix.sh
 
+# Install make for Makefile
+RUN apt update && apt install -y make
+
 USER $MAMBA_USER
 
 SHELL ["/usr/local/bin/_dockerfile_shell.sh"]
@@ -124,7 +127,7 @@ ARG TARGETPLATFORM
 # RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID ls -al /opt/conda/pkgs
 # Install dependencies from lockfile into environment, cache packages in /opt/conda/pkgs
 RUN --mount=type=cache,target=$MAMBA_ROOT_PREFIX/pkgs,id=conda-$TARGETPLATFORM,uid=$MAMBA_USER_ID,gid=$MAMBA_USER_GID \
-    micromamba create --name researcha --yes --file /locks/environment.yml
+    micromamba create --name research --yes --file /locks/environment.yml
 
 # Set conda-forge as default channel (otherwise no default channel is set)
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
@@ -136,4 +139,4 @@ RUN micromamba config set show_banner false --env
 # RUN micromamba run -n research pip install example-dependency --no-deps --no-cache-dir
 
 # Use our environment `research` as default
-ENV ENV_NAME=researcha
+ENV ENV_NAME=research

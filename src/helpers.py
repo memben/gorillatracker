@@ -1,8 +1,6 @@
 import os
 import re
 
-# from typing import Any
-
 # from lightning import Trainer
 # from lightning.pytorch.callbacks import Callback
 # from lightning.pytorch.utilities.rank_zero import rank_zero_only
@@ -10,6 +8,8 @@ import re
 from print_on_steroids import logger
 
 from dlib.frameworks.pytorch import get_rank
+
+# from typing import Any
 
 
 def check_for_wandb_checkpoint_and_download_if_necessary(

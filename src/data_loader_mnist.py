@@ -1,20 +1,19 @@
-from torchvision.datasets import MNIST
-from .data_loader_utils import TripletDataLoader
-from torch.utils.data import random_split
-from torchvision.transforms import Compose, ToTensor, Normalize, Grayscale
 import lightning as L
 import torch
+from torch.utils.data import random_split
+from torchvision.datasets import MNIST
+from torchvision.transforms import Compose, Grayscale, ToTensor
+
+from .data_loader_utils import TripletDataLoader
+
 
 def get_transforms():
-    return Compose([
-        # SquarePad(),
-        # Resize((256, 256), interpolation=InterpolationMode.BILINEAR),
-        # Printer(sample=0, force_first=False),
-        # lambda x: x.repeat(3, 1, 1),
-        # Normalize((0.5,), (0.5,)),
-        Grayscale(num_output_channels=3),
-        ToTensor(),
-    ])
+    return Compose(
+        [
+            Grayscale(num_output_channels=3),
+            ToTensor(),
+        ]
+    )
 
 
 class MNISTDataModule(L.LightningDataModule):
@@ -24,13 +23,10 @@ class MNISTDataModule(L.LightningDataModule):
         self.batch_size = batch_size
 
     def setup(self, stage: str):
-        
-        self.mnist_test = MNIST(self.data_dir, train=False, transforms)
-        self.mnist_predict = MNIST(self.data_dir, train=False)
-        mnist_full = MNIST(self.data_dir, train=True)
-        self.mnist_train, self.mnist_val = random_split(
-            mnist_full, [55000, 5000], generator=torch.Generator().manual_seed(42)
-        )
+        self.mnist_test = MNIST(self.data_dir, train=False, transforms=get_transforms())
+        self.mnist_predict = MNIST(self.data_dir, train=False, transforms=get_transforms())
+        mnist_full = MNIST(self.data_dir, train=True, transforms=get_transforms())
+        self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000], generator=torch.Generator().manual_seed(42))
 
     def train_dataloader(self):
         return TripletDataLoader(self.mnist_train, batch_size=self.batch_size)
