@@ -1,8 +1,8 @@
 import importlib
+
 import lightning as L
 import pandas as pd
 import torch
-import torch.nn as nn
 from print_on_steroids import logger
 from torch.optim import Adam
 from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
@@ -10,6 +10,9 @@ from gorillatracker.triplet_loss import get_triplet_loss
 
 
 class BaseModule(L.LightningModule):
+    """
+    must be subclassed and set self.model = ...
+    """
     def __init__(
         self,
         model_name_or_path: str,
@@ -48,8 +51,6 @@ class BaseModule(L.LightningModule):
         self.epsilon = epsilon
         self.margin = margin
 
-        ##### Load the model here #####
-        # TODO
         self.model = None
         self.from_scratch = from_scratch
 
@@ -58,70 +59,52 @@ class BaseModule(L.LightningModule):
         self.embeddings_table = pd.DataFrame(columns=self.embeddings_table_columns)
         self.embedding_size = embedding_size
 
-        # TODO
+        # TODO(rob2u): rename loss mode
         self.triplet_loss = get_triplet_loss(loss_mode, margin)
 
     def forward(self, x):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        anchor, positive, negative, negative_positive = batch  # format is -> Tupel[Tupel(int,2), 3]
-
-        anchor, anchor_label, anchor_idx = anchor
-        positive, positive_label, positive_idx = positive
-        negative, negative_label, negative_idx = negative
-        negative_positive, negative_positive_label, negative_positive_idx = negative_positive
-
-        images = torch.cat((anchor, positive, negative, negative_positive), dim=0)
-        # labels = torch.cat((anchor_idx, positive_idx, negative_idx), dim=0)
-        labels = torch.cat((anchor_label, positive_label, negative_label, negative_positive_label), dim=0)
-        embeddings = self(images)
-
-        loss = self.triplet_loss(embeddings, labels, self.current_epoch)
-        self.log("train_loss", loss, on_step=True, prog_bar=True, sync_dist=True)
-
+        images, labels = batch # embeddings either (ap, a, an, n) oder (a, p, n)
+        vec = torch.cat(images, dim=0)
+        embeddings = self.forward(vec)
+        labels = torch.cat(labels, dim=0)
+        loss, pos_dist, neg_dist = self.triplet_loss(embeddings, labels)
+        self.log("train/loss", loss, on_step=True, prog_bar=True, sync_dist=True)
+        self.log("train/positive_distance", pos_dist, on_step=True)
+        self.log("train/negative_distance", neg_dist, on_step=True)
         return loss
-
-        # self.log("train_distance_positive", distance_positive, on_step=True, prog_bar=True, sync_dist=True)
-        # self.log("train_distance_negative", distance_negative, on_step=True, prog_bar=True, sync_dist=True)
-
-    def add_validation_embeddings(self, batch_embeddings, batch_labels):
-        # feed the anchor, positive, negative images to the model
-
-        # log the embedded anchor to x (create dataframe for current batch -> then concatenate df with self.embeddings_table)
+    
+    def add_validation_embeddings(self, anchor_embeddings, anchor_labels):
+        # save anchor embeddings of validation step for later analysis in W&B
         embeddings = torch.reshape(
-            batch_embeddings, (-1, self.embedding_size)
-        )  # get tensor of shape (batch_size, embedding_size)
+            anchor_embeddings, (-1, self.embedding_size)
+        )
         embeddings = embeddings.cpu()
 
         assert len(self.embeddings_table_columns) == 2
         data = {
-            self.embeddings_table_columns[0]: batch_labels.tolist(),
+            self.embeddings_table_columns[0]: anchor_labels.tolist(),
             self.embeddings_table_columns[1]: [embedding.numpy() for embedding in embeddings],
         }
 
         data = pd.DataFrame(data)
         self.embeddings_table = pd.concat([data, self.embeddings_table], ignore_index=True)
-
+        # NOTE(rob2u): will get flushed by W&B Callback on val epoch end.
+        
     def validation_step(self, batch, batch_idx):
-        anchor, positive, negative, negative_positive = batch  # format is -> Tupel[Tupel(int,2), 3]
-
-        anchor, anchor_label, anchor_idx = anchor
-        positive, positive_label, positive_idx = positive
-        negative, negative_label, negative_idx = negative
-        negative_positive, negative_positive_label, negative_positive_idx = negative_positive
-
-        images = torch.cat((anchor, positive, negative, negative_positive), dim=0)
-        # labels = torch.cat((anchor_idx, positive_idx, negative_idx), dim=0)
-        labels = torch.cat((anchor_label, positive_label, negative_label, negative_positive_label), dim=0)
-        loss_embeddings = self(images)
-
-        self.add_validation_embeddings(loss_embeddings[: len(anchor)], anchor_label)
-
-        loss = self.triplet_loss(loss_embeddings, labels, self.current_epoch)
-
-        self.log("val_loss", loss, on_step=True, sync_dist=True, prog_bar=True)
-
+        images, labels = batch # embeddings either (ap, a, an, n) oder (a, p, n)
+        n_achors = len(images[0])
+        vec = torch.cat(images, dim=0)
+        labels = torch.cat(labels, dim=0)
+        embeddings = self.forward(vec)
+        
+        self.add_validation_embeddings(embeddings[:n_achors], labels[:n_achors])
+        loss, pos_dist, neg_dist = self.triplet_loss(embeddings, labels)
+        self.log("val/loss", loss, on_step=True, sync_dist=True, prog_bar=True)
+        self.log("val/positive_distance", pos_dist, on_step=True)
+        self.log("val/negative_distance", neg_dist, on_step=True)
         return loss
 
     def configure_optimizers(self):
@@ -180,12 +163,12 @@ class EfficientNetV2Wrapper(BaseModule):
             if kwargs.get("from_scratch", False)
             else efficientnet_v2_l()
         )
+        self.model.classifier = torch.nn.Sequential(
+            torch.nn.Linear(in_features=self.model.classifier[1].in_features, out_features=self.embedding_size),
+        )
 
-        self.model.classifier = nn.Linear(1280, self.embedding_size)
-
-
+# NOTE(liamvdv): Register custom model backbones here.
 custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper}
-
 
 def get_model_cls(model_name: str):
     model_cls = custom_model_cls.get(model_name, None)

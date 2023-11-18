@@ -10,21 +10,30 @@ from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor, Ea
 from lightning.pytorch.loggers.wandb import WandbLogger
 from print_on_steroids import graceful_exceptions, logger
 from simple_parsing import parse
-
+import importlib
 
 from args import TrainingArgs
 from dlib import CUDAMetricsCallback, WandbCleanupDiskAndCloudSpaceCallback, get_rank, wait_for_debugger
 from gorillatracker.metrics import LogEmbeddingsToWandbCallback
-from gorillatracker.data_module_bristol import GorillaDM
+from gorillatracker.data_modules import TripletDataModule, QuadletDataModule
 from gorillatracker.helpers import (
     check_checkpoint_path_for_wandb,
     check_for_wandb_checkpoint_and_download_if_necessary,
 )
-from gorillatracker.model import get_model_cls
+from model import get_model_cls
 
 WANDB_PROJECT = "MNIST-EfficientNetV2"
 WANDB_ENTITY = "gorillas"
 
+def get_data_module_class(module: str, online: bool = True):
+    parent = QuadletDataModule if online else TripletDataModule
+    mod = importlib.import_module(module)
+    for symbol_name in dir(mod):
+        v = getattr(mod, symbol_name)
+        # Check if the symbol is a subclass of the given class
+        if issubclass(v, parent) and v is not parent:
+            print(f"Selected DataModule: {v}")
+            return v
 
 def main(args: TrainingArgs):
     ########### CUDA checks ###########
@@ -98,21 +107,6 @@ def main(args: TrainingArgs):
         margin=args.margin,
         loss_mode=args.loss_mode,
     )
-    # NOTE: should be fine right now
-    # TODO(liamvdv): support resuming from checkpoint? Clear interpretation of
-    #                args.from_scratch, args.resume and arg.saved_checkpoint_path
-    # if args.resume:  # load weights, optimizer states, scheduler state, ...\
-    #     args.saved_checkpoint_path = check_for_wandb_checkpoint_and_download_if_necessary(
-    #         args.saved_checkpoint_path, wandb_logger.experiment
-    #     )
-
-    #     model = EfficientNetV2Wrapper.load_from_checkpoint(args.saved_checkpoint_path, save_hyperparameters=False)
-    #     # we will resume via trainer.fit(ckpt_path=...)
-    # else:  # load only weights
-    #     model = EfficientNetV2Wrapper(**model_args)
-    #     torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device("cpu"))
-    #     model.load_state_dict(torch_load["state_dict"], strict=False)
-
     model_cls = get_model_cls(args.model_name_or_path)
 
     if args.saved_checkpoint_path is None:
@@ -125,7 +119,7 @@ def main(args: TrainingArgs):
             # we will resume via trainer.fit(ckpt_path=...)
         else:  # load only weights
             model = model_cls(**model_args)
-            torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device("cpu"))
+            torch_load = torch.load(args.saved_checkpoint_path, map_location=torch.device(model_args["accelerator"]))
             model.load_state_dict(torch_load["state_dict"], strict=False)
     else:
         model = model_cls(**model_args)
@@ -142,8 +136,8 @@ def main(args: TrainingArgs):
         model = torch.compile(model)
 
     #################### Construct dataloaders & trainer #################
-
-    dm = GorillaDM(training_args=args)
+    dm_cls = get_data_module_class(args.data_module, online=args.loss_mode.startswith("online"))
+    dm = dm_cls.from_training_args(args)
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
     embeddings_logger_callback = LogEmbeddingsToWandbCallback(
@@ -155,15 +149,15 @@ def main(args: TrainingArgs):
         cleanup_local=True, cleanup_online=False, size_limit=20
     )
     checkpoint_callback = ModelCheckpoint(
-        filename="snap-{epoch}-samples-loss-{val_loss:.2f}",
-        monitor="val_loss",
+        filename="snap-{epoch}-samples-loss-{val/loss:.2f}",
+        monitor="val/loss",
         mode="min",
         auto_insert_metric_name=False,
         every_n_epochs=int(args.save_interval),
     )
 
     early_stopping = EarlyStopping(
-        monitor="val_loss",
+        monitor="val/loss",
         mode="min",
         patience=args.early_stopping_patience,
     )

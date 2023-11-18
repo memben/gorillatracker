@@ -239,7 +239,9 @@ def generate_split(
 ):
     reid_factors = "-"
     if mode == "openset":
-        assert isinstance(reid_factor_val, int) and isinstance(reid_factor_test, int), "must pass reid_factor_test if mode=openset"
+        assert isinstance(reid_factor_val, int) and isinstance(
+            reid_factor_test, int
+        ), "must pass reid_factor_test if mode=openset"
         reid_factors = f"-reid-val-{reid_factor_val}-test-{reid_factor_test}"
     name = f"splits/{dataset.replace('/', '-')}-{mode}{reid_factors}-mintraincount-{min_train_count}-seed-{seed}-train-{train}-val-{val}-test-{test}"
     outdir = Path(f"data/{name}")

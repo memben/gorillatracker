@@ -47,7 +47,7 @@ class TrainingArgs:
     lr_decay: float = field(default=0.97)
     lr_decay_interval: int = field(default=3)
     margin: float = field(default=0.5)
-    loss_mode: Literal["soft", "hard", "semi-hard", "semi-hard->hard"] = field(default="semi-hard")
+    loss_mode: Literal["offline", "online/soft", "online/hard", "online/semi-hard"] = field(default="semi-hard")
 
     batch_size: int = field(default=8)
     grad_clip: float = field(default=1.0)
@@ -59,10 +59,8 @@ class TrainingArgs:
     embedding_save_interval: int = field(default=1)
 
     # Config and Data Arguments
-    train_dir: Path = field(alias="train_dir")
-    val_dir: Path = field(alias="val_dir")
-    test_dir: Union[Path, None] = field(default=None)
-
+    data_module: str = field(default="gorillatracker.data_module_mnist")
+    data_dir: Path = field(default="./mnist")
     # Add any additional fields as needed.
 
     def __post_init__(self):

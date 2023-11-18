@@ -5,7 +5,7 @@ from torch.utils.data import random_split
 
 from gorillatracker.data_loaders import QuadletDataLoader, TripletDataLoader
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +16,10 @@ class TripletDataModule(L.LightningDataModule):
         self.dataset_class = dataset_class or self.get_dataset_class()
         self.data_dir = data_dir
         self.batch_size = batch_size
+
+    @classmethod
+    def from_training_args(cls, args):
+        return cls(data_dir=args.data_dir, batch_size=args.batch_size)
 
     def get_transforms(self):
         return None
@@ -60,6 +64,10 @@ class QuadletDataModule(L.LightningDataModule):
         self.dataset_class = dataset_class or self.get_dataset_class()
         self.data_dir = data_dir
         self.batch_size = batch_size
+
+    @classmethod
+    def from_training_args(cls, args):
+        return cls(data_dir=args.data_dir, batch_size=args.batch_size)
 
     def get_transforms(self):
         return None

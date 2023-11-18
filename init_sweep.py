@@ -5,10 +5,10 @@ sweep_config = {
     "program": "./train.py",  # Note: not the sweep file, but the training script
     "name": "test2",
     "method": "grid",  # Specify the search method (random search in this case)
-    "metric": {"goal": "minimize", "name": "train_loss"},  # Specify the metric to optimize
+    "metric": {"goal": "minimize", "name": "train/loss"},  # Specify the metric to optimize
     "parameters": {
         # "param1": {"min": 1, "max": 10},  # Define parameter search space
-        "loss_mode": {"values": ["semi-hard", "hard", "soft", "semi-hard->hard"]},
+        "loss_mode": {"values": ["offline", "online/soft", "online/hard", "online/semi-hard"]},
         # Add other parameters as needed
     },
 }

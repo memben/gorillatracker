@@ -1,8 +1,8 @@
 from typing import Literal
+
 import torch
 import torch.nn.functional as F
 from torch import nn
-
 
 eps = 1e-16  # an arbitrary small value to be used for numerical stability tricks
 
@@ -112,7 +112,9 @@ def get_semi_hard_mask(
     distance_matrix_neg = distance_matrix * torch.logical_and(labels_not_equal, indices_not_equal).float()
 
     # filter out all points where the distance to a negative is smaller than the max distance to a positive
-    distance_difference = distance_matrix_pos.unsqueeze(2).repeat(1, 1, batch_size) - distance_matrix_neg.unsqueeze(1).repeat(
+    distance_difference = distance_matrix_pos.unsqueeze(2).repeat(1, 1, batch_size) - distance_matrix_neg.unsqueeze(
+        1
+    ).repeat(
         1, batch_size, 1
     )  # shape: (anchor: batch_size,positive: batch_size, negative: batch_size)
 
@@ -189,19 +191,22 @@ def euclidean_distance_matrix(embeddings):
 
 
 class TripletLossOnline(nn.Module):
-    """Uses all valid triplets to compute Triplet loss (for further details see https://arxiv.org/pdf/1503.03832.pdf)
-    For the base implementation [this](https://towardsdatascience.com/triplet-loss-advanced-intro-49a07b7d8905) was used
+    """
+    TripletLossOnline operates on Quadlets and does batch optimization.
+    Inspiration:
+        https://arxiv.org/pdf/1503.03832.pdf
+        https://towardsdatascience.com/triplet-loss-advanced-intro-49a07b7d8905
 
     Args:
       margin: Margin value in the Triplet Loss equation
     """
 
-    def __init__(self, margin=1.0, mode: Literal["hard", "semi-hard", "soft", "semi-hard->hard"] = "semi-hard"):
+    def __init__(self, margin=1.0, mode: Literal["hard", "semi-hard", "soft"] = "semi-hard"):
         super().__init__()
         self.margin = margin
         self.mode = mode
 
-    def forward(self, embeddings, labels, epoch: int = 0):
+    def forward(self, embeddings, labels):
         """computes loss value.
 
         Args:
@@ -211,9 +216,6 @@ class TripletLossOnline(nn.Module):
         Returns:
           Scalar loss value.
         """
-        # NOTE: delete later workaround for wandb sweep
-        if epoch > 5 and self.mode == "semi-hard->hard":
-            self.mode = "hard"
 
         # step 1 - get distance matrix
         # shape: (batch_size, batch_size)
@@ -243,7 +245,8 @@ class TripletLossOnline(nn.Module):
         num_losses = torch.sum(mask)
         triplet_loss = triplet_loss.sum() / (num_losses + eps)
 
-        return triplet_loss
+        # TODO(rob2u): implement positive and negative distance means
+        return triplet_loss, -1, -1
 
     def get_mask(self, distance_matrix, anchor_positive_dists, anchor_negative_dists, labels):
         mask = get_triplet_mask(labels)
@@ -263,7 +266,7 @@ class TripletLossOnline(nn.Module):
             mask = torch.logical_and(mask, hard_mask)
 
         elif (
-            self.mode == "semi-hard" or self.mode == "semi-hard->hard"
+            self.mode == "semi-hard"
         ):  # select the negatives with a bigger distance than the positive but a difference smaller than the margin
             semi_hard_mask = get_semi_hard_mask(labels, distance_matrix)
             # combine with base mask
@@ -276,18 +279,17 @@ class TripletLossOnline(nn.Module):
 
 
 class TripletLossOffline(nn.Module):
-    """Compute Triplet loss for a batch of generated triplets
-
-    Args:
-      margin: Margin value in the Triplet Loss equation
+    """
+    TripletLossOffline operates on triplets.
     """
 
-    def __init__(self, margin=1.0):
+    def __init__(self, margin: float = 1.0):
         super().__init__()
         self.margin = margin
 
     def forward(self, embeddings, labels):
-        """computes loss value.
+        """
+        Compute loss.
 
         Args:
           embeddings: Batch of embeddings, e.g., output of the encoder. shape: (batch_size, embedding_dim)
@@ -296,25 +298,23 @@ class TripletLossOffline(nn.Module):
         Returns:
           Scalar loss value.
         """
-        # reconstruct triplets from embeddings and labels
-        triplet_base_amount = embeddings.size()[0] // 3
-        anchor_embeddings = embeddings[:triplet_base_amount]
-        positive_embeddings = embeddings[triplet_base_amount : 2 * triplet_base_amount]
-        negative_embeddings = embeddings[2 * triplet_base_amount :]
+        # NOTE(rob2u): custom implementation to return pos/neg distances.
+        # Offline has 3 chunks, anchors, postives and negatives.
+        third = embeddings.size()[0] // 3
+        anchors, positives, negatives = embeddings[:third], embeddings[third : 2 * third], embeddings[2 * third :]
 
-        distance_positive = torch.functional.norm(anchor_embeddings - positive_embeddings, dim=1)
-        distance_negative = torch.functional.norm(anchor_embeddings - negative_embeddings, dim=1)
-
+        distance_positive = torch.functional.norm(anchors - positives, dim=1)
+        distance_negative = torch.functional.norm(anchors - negatives, dim=1)
         losses = torch.relu(distance_positive - distance_negative + self.margin).mean()
-        return losses.mean()  # , distance_positive.mean(), distance_negative.mean()
+        return losses.mean(), distance_positive.mean(), distance_negative.mean()
 
 
 def get_triplet_loss(loss_mode: str, margin: float):
     loss_modes = {
-        "hard": TripletLossOnline(margin=margin, mode="hard"),
-        "semi-hard": TripletLossOnline(margin=margin, mode="semi-hard"),
-        "soft": TripletLossOnline(margin=margin, mode="soft"),
-        "semi-hard->hard": TripletLossOnline(margin=margin, mode="semi-hard->hard"),
+        "online/hard": TripletLossOnline(margin=margin, mode="hard"),
+        "online/semi-hard": TripletLossOnline(margin=margin, mode="semi-hard"),
+        "online/soft": TripletLossOnline(margin=margin, mode="soft"),
+        "offline": TripletLossOffline(margin=margin),
     }
     return loss_modes[loss_mode]
 
