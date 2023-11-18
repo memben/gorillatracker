@@ -25,6 +25,7 @@ dependencies:
   - ultralytics=8.0.186
   - torchvision
   - faiss-cpu # maybe necessary to switch to faiss-cuda
+  - git+https://github.com/facebookresearch/segment-anything.git
 
   # Good to have
   - numpy
@@ -38,6 +39,7 @@ dependencies:
   - zstandard
   - debugpy
   - tqdm
+  - ipykernel
 
   # Dev dependencies
   - black
