@@ -1,8 +1,8 @@
 import numpy as np
 import torchvision.transforms as transforms
 
-from gorillatracker.data_modules import QuadletDataModule, TripletDataModule
-from gorillatracker.dataset_bristol import BristolDataset
+from gorillatracker.data_modules.data_modules import QuadletDataModule, TripletDataModule
+from gorillatracker.datasets.bristol import BristolDataset
 
 
 class SquarePad:
@@ -19,7 +19,7 @@ def get_bristol_transforms():
     return transforms.Compose(
         [
             SquarePad(),
-            transforms.Resize(10),
+            transforms.Resize(124),
             transforms.ToTensor(),
         ]
     )

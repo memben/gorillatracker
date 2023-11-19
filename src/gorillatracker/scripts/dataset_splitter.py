@@ -133,7 +133,7 @@ def compute_split(samples: int, train: int, val: int, test: int):
     return train_count, val_count, test_count
 
 
-TEST = True
+TEST = False
 
 
 def copy(src: Path, dst: Path):
@@ -144,6 +144,7 @@ def copy(src: Path, dst: Path):
 
 
 def write_entries(entries: List[Entry], outdir: Path):
+    os.makedirs(outdir, exist_ok=True)
     for entry in entries:
         assert isinstance(entry.value, Value)
         newpath = outdir / entry.value.name

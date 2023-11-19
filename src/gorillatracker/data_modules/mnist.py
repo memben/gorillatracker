@@ -3,7 +3,7 @@ from functools import partial
 from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, Grayscale, ToTensor
 
-from gorillatracker.data_modules import QuadletDataModule, TripletDataModule
+from gorillatracker.data_modules.data_modules import QuadletDataModule, TripletDataModule
 
 
 def get_mnist_transforms():
