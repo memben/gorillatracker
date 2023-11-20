@@ -34,7 +34,7 @@ class NletDataModule(L.LightningDataModule):
 
         if stage == "fit":
             self.train = self.dataset_class(self.data_dir, partition="train", transform=self.transforms)
-        if stage == "test":
+        elif  stage == "test":
             self.test = self.dataset_class(self.data_dir, partition="test", transform=self.transforms)
         elif stage == "validate":
             self.val = self.dataset_class(self.data_dir, partition="val", transform=self.transforms)
