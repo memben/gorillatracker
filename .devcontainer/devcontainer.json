@@ -50,7 +50,7 @@
         "source=/scratch2/gorillatracker/data/ground_truth/,target=/workspaces/gorillatracker/data/ground_truth,type=bind,ro",
         "source=/scratch2/gorillatracker/data/splits/,target=/workspaces/gorillatracker/data/splits,type=bind",
         // NOTE(liamvdv): Allow write.
-        "source=/scratch2/gorillatracker/models/,target=/workspaces/gorillatracker/models,type=bind",
+        "source=/scratch2/gorillatracker/models/,target=/workspaces/gorillatracker/models,type=bind"
     ],
     "remoteEnv": {
         "WANDB_API_KEY": "${localEnv:WANDB_API_KEY}",

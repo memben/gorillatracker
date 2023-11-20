@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Literal, Tuple, Union
 
 from PIL import Image
 from torch.utils.data import Dataset
@@ -7,15 +7,15 @@ from torch.utils.data import Dataset
 Label = Union[int, str]
 
 
-def get_samples(data_dir: Path) -> List[Tuple[Path, Label]]:
+def get_samples(dirpath: Path) -> List[Tuple[Path, Label]]:
     """
     Assumed directory structure:
-        data_dir/
+        dirpath/
             <label>_<...>.png
 
     """
     samples = []
-    image_paths = data_dir.glob("**/*.png")
+    image_paths = dirpath.glob("*.png")
     for image_path in image_paths:
         label = image_path.name.split("_")[0]
         samples.append((image_path, label))
@@ -23,16 +23,18 @@ def get_samples(data_dir: Path) -> List[Tuple[Path, Label]]:
 
 
 class CXLDataset(Dataset):
-    def __init__(self, data_dir, train: bool = True, transform=None):
+    def __init__(self, data_dir, partition: Literal["train", "val", "test"], transform=None):
         """
         Assumes directory structure:
             data_dir/
                 train/
                     ...
-                eval/
+                val/
+                    ...
+                test/
                     ...
         """
-        dirpath = data_dir / Path("train" if train else "eval")
+        dirpath = data_dir / Path(partition)
         self.samples = get_samples(dirpath)
         self.transform = transform
 
