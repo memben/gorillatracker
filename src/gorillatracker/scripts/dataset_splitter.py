@@ -133,7 +133,7 @@ def compute_split(samples: int, train: int, val: int, test: int):
     return train_count, val_count, test_count
 
 
-TEST = False
+TEST = True
 
 
 def copy(src: Path, dst: Path):
@@ -228,7 +228,7 @@ def stats_and_confirm(name, full, train, val, test):
 
 
 def generate_split(
-    dataset="ground_truth/cxl",
+    dataset="ground_truth/cxl/full_images",
     mode: Literal["openset", "closedset"] = "closedset",
     seed=42,
     train=70,
@@ -246,7 +246,7 @@ def generate_split(
         reid_factors = f"-reid-val-{reid_factor_val}-test-{reid_factor_test}"
     name = f"splits/{dataset.replace('/', '-')}-{mode}{reid_factors}-mintraincount-{min_train_count}-seed-{seed}-train-{train}-val-{val}-test-{test}"
     outdir = Path(f"data/{name}")
-    images = read_ground_truth_cxl(f"data/{dataset}/full_images")
+    images = read_ground_truth_cxl(f"data/{dataset}")
     train, val, test = splitter(
         images,
         mode=mode,
@@ -266,5 +266,5 @@ def generate_split(
 
 
 if __name__ == "__main__":
-    dir = generate_split(dataset="ground_truth/cxl", mode="openset", seed=43, reid_factor_test=10, reid_factor_val=10)
-    dir = generate_split(dataset="ground_truth/cxl", mode="closedset", seed=42)
+    dir = generate_split(dataset="ground_truth/cxl/full_images", mode="openset", seed=43, reid_factor_test=10, reid_factor_val=10)
+    dir = generate_split(dataset="ground_truth/cxl/full_images", mode="closedset", seed=42)
