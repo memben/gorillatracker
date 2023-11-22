@@ -19,6 +19,7 @@ def get_triplet_mask(labels):
         `labels[i] == labels[j] and labels[i] != labels[k]`
         and `i`, `j`, `k` are different.
     """
+    assert torch.is_tensor(labels), "OnlineTripletLoss is currenlty only supported for tensor (numeric) labels" # TODO(rob2u): support string labels
     # step 1 - get a mask for distinct indices
 
     # shape: (batch_size, batch_size)
@@ -100,7 +101,7 @@ def get_semi_hard_mask(
         A distance is semi-hard if:
         `labels[i] == labels[j] and labels[i] != labels[k] and distance_matrix[i][j] < distance_matrix[i][k]`
     """
-
+    assert torch.is_tensor(labels), "TODO(rob2u): implement OnlineTripletLoss for non-tensor (numeric) labels"
     # filter out all where the distance to a negative is smaller than the max distance to a positive
     batch_size = labels.size()[0]
     indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
@@ -250,6 +251,7 @@ class TripletLossOnline(nn.Module):
         return triplet_loss, todo, todo
 
     def get_mask(self, distance_matrix, anchor_positive_dists, anchor_negative_dists, labels):
+        assert torch.is_tensor(labels), "TODO(rob2u): implement OnlineTripletLoss for non-tensor (numeric) labels"
         mask = get_triplet_mask(labels)
 
         if self.mode == "hard":  # take only the hardest negative as a negative per anchor
