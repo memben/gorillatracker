@@ -2,30 +2,32 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
-from torch import nn
 from sklearn.preprocessing import LabelEncoder
+from torch import nn
 
 eps = 1e-16  # an arbitrary small value to be used for numerical stability tricks
 
+
 def convert_labels_to_tensor(labels):
     """Convert labels to tensor
-    
+
     Args:
         labels: labels in array-like, e.g., list or numpy array. shape: (batch_size,)
-    
+
     Returns:
         Tensor of labels. shape: (batch_size,). That contains labels from 0 to num_classes - 1.
     """
     if isinstance(labels, torch.Tensor):
         return labels
-    
+
     if labels is None:
         return None
-    
+
     le = LabelEncoder()
     labels = le.fit_transform(labels)
-    
+
     return torch.tensor(labels)
+
 
 def get_triplet_mask(labels):
     """Compute a mask for valid triplets
@@ -39,7 +41,6 @@ def get_triplet_mask(labels):
         `labels[i] == labels[j] and labels[i] != labels[k]`
         and `i`, `j`, `k` are different.
     """
-    assert torch.is_tensor(labels), "OnlineTripletLoss is currenlty only supported for tensor (numeric) labels" # TODO(rob2u): support string labels
     # step 1 - get a mask for distinct indices
 
     # shape: (batch_size, batch_size)
@@ -122,7 +123,6 @@ def get_semi_hard_mask(
         A distance is semi-hard if:
         `labels[i] == labels[j] and labels[i] != labels[k] and distance_matrix[i][j] < distance_matrix[i][k]`
     """
-    assert torch.is_tensor(labels), "TODO(rob2u): implement OnlineTripletLoss for non-tensor (numeric) labels"
     # filter out all where the distance to a negative is smaller than the max distance to a positive
     labels = convert_labels_to_tensor(labels)
     batch_size = labels.size()[0]
@@ -260,7 +260,7 @@ class TripletLossOnline(nn.Module):
         # we only want to keep correct and depending on the mode the hardest or semi-hard triplets
         # therefore we create a mask that is 1 for all valid triplets and 0 for all invalid triplets
         mask = self.get_mask(distance_matrix, anchor_positive_dists, anchor_negative_dists, labels)
-        mask.to(triplet_loss.device) # ensure mask is on the same device as triplet_loss
+        mask.to(triplet_loss.device)  # ensure mask is on the same device as triplet_loss
         triplet_loss *= mask
 
         triplet_loss = F.relu(triplet_loss)
@@ -268,14 +268,13 @@ class TripletLossOnline(nn.Module):
         # step 4 - compute scalar loss value by averaging
         num_losses = torch.sum(mask)
         triplet_loss = triplet_loss.sum() / (num_losses + eps)
-        
+
         # calculate the average positive and negative distance
         anchor_positive_dist_sum = (anchor_positive_dists.repeat(1, 1, len(labels)) * mask).sum()
         anchor_negative_dist_sum = (anchor_negative_dists.repeat(1, len(labels), 1) * mask).sum()
         anchor_positive_dist_mean = anchor_positive_dist_sum / (num_losses + eps)
-        anchor_negative_dist_mean = anchor_negative_dist_sum / (num_losses + eps)     
+        anchor_negative_dist_mean = anchor_negative_dist_sum / (num_losses + eps)
 
-        # TODO(rob2u): implement positive and negative distance means
         return triplet_loss, anchor_positive_dist_mean, anchor_negative_dist_mean
 
     def get_mask(self, distance_matrix, anchor_positive_dists, anchor_negative_dists, labels):
@@ -287,9 +286,10 @@ class TripletLossOnline(nn.Module):
             neg_mask = get_distance_mask(labels, valid="neg")  # get all valid negatives
 
             # for each anchor compute the min distance to a negative
-            _, neg_min_indices = torch.min(
-                anchor_negative_dists.squeeze(1) + (((1.0 - neg_mask.int()) * (1 / eps))), dim=1
-            )  # TODO find better solution for this
+            masked_anchor_negative_dists = anchor_negative_dists.squeeze(1).masked_fill(
+                neg_mask == 0, float("inf")
+            )  # fill all invalid negatives with inf so they are not considered in the min
+            _, neg_min_indices = torch.min(masked_anchor_negative_dists, dim=1)
 
             hard_mask = torch.zeros(len(labels), len(labels), len(labels))
             hard_mask[torch.arange(len(labels)), :, neg_min_indices] = 1
