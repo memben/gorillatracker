@@ -103,6 +103,7 @@ def main(args: TrainingArgs):
         lr_decay_interval=args.lr_decay_interval,
         margin=args.margin,
         loss_mode=args.loss_mode,
+        embedding_size=args.embedding_size,
     )
     model_cls = get_model_cls(args.model_name_or_path)
 
