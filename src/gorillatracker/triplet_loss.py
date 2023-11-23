@@ -135,7 +135,7 @@ def get_semi_hard_mask(
     # filter out all points where the distance to a negative is smaller than the max distance to a positive
     distance_difference = distance_matrix_neg.unsqueeze(1).repeat(1, batch_size, 1) - distance_matrix_pos.unsqueeze(2).repeat(1, 1, batch_size) # shape: (anchor: batch_size,positive: batch_size, negative: batch_size)
 
-    # filter out all points where the distance to a negative is smaller than the max distance to a positive
+    # filter out all points where the distance to a negative is smaller than distance to a positive
       # now only the triplets where dist_pos < dist_neg are left
     mask = get_triplet_mask(labels)
     semi_hard_mask = distance_difference > 0.0
