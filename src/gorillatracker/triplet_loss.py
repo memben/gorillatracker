@@ -64,6 +64,7 @@ def get_triplet_mask(labels):
 
     # shape: (batch_size, batch_size)
     labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
+    labels_equal = labels_equal.to(distinct_indices.device)
     # shape: (batch_size, batch_size, 1)
     i_equal_j = labels_equal.unsqueeze(2).repeat(1, 1, batch_size)
     # shape: (batch_size, 1, batch_size)
@@ -73,6 +74,7 @@ def get_triplet_mask(labels):
     valid_indices = torch.logical_and(i_equal_j, torch.logical_not(i_equal_k))
 
     # step 3 - combine two masks
+    
     mask = torch.logical_and(distinct_indices, valid_indices)
 
     return mask
@@ -124,12 +126,14 @@ def get_semi_hard_mask(
         `labels[i] == labels[j] and labels[i] != labels[k] and distance_matrix[i][j] < distance_matrix[i][k]`
     """
     # filter out all where the distance to a negative is smaller than the max distance to a positive
+    device = distance_matrix.device
     labels = convert_labels_to_tensor(labels)
+    labels = labels.to(labels)
     batch_size = labels.size()[0]
-    indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
-    indices_not_equal = torch.logical_not(indices_equal)
-    labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
-    labels_not_equal = labels.unsqueeze(0) != labels.unsqueeze(1)
+    indices_equal = torch.eye(batch_size, dtype=torch.bool, device=device)
+    indices_not_equal = torch.logical_not(indices_equal, )
+    labels_equal = (labels.unsqueeze(0) == labels.unsqueeze(1)).to(device)
+    labels_not_equal = torch.logical_not(labels_equal)
 
     distance_matrix_pos = distance_matrix * torch.logical_and(labels_equal, indices_not_equal).float()
     distance_matrix_neg = distance_matrix * torch.logical_and(labels_not_equal, indices_not_equal).float()
@@ -228,7 +232,7 @@ class TripletLossOnline(nn.Module):
         # we only want to keep correct and depending on the mode the hardest or semi-hard triplets
         # therefore we create a mask that is 1 for all valid triplets and 0 for all invalid triplets
         mask = self.get_mask(distance_matrix, anchor_positive_dists, anchor_negative_dists, labels)
-        mask.to(triplet_loss.device)  # ensure mask is on the same device as triplet_loss
+        mask = mask.to(triplet_loss.device)  # ensure mask is on the same device as triplet_loss
         triplet_loss *= mask
 
         triplet_loss = F.relu(triplet_loss)
