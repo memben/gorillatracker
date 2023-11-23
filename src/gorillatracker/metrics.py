@@ -8,6 +8,7 @@ import torch
 import torchmetrics as tm
 import wandb
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import LabelEncoder
 from torchmetrics.functional import pairwise_euclidean_distance
 
 
@@ -86,9 +87,14 @@ def load_embeddings_from_wandb(embedding_name, run):
     return data
 
 
+
 def evaluate_embeddings(data, embedding_name, metrics={}):  # data is DataFrame with columns: label and embedding
     embeddings = np.asarray([embedding for embedding in data["embedding"]], dtype=np.float32)
-    labels = np.asarray([label for label in data["label"]], dtype=np.int32)
+    # convert labels to numpy array
+    le = LabelEncoder()
+    labels = le.fit_transform(data["label"])
+    
+    # labels = np.asarray([label for label in data["label"]], dtype=np.int32)
 
     results = {}
     for metric_name, metric in metrics.items():
