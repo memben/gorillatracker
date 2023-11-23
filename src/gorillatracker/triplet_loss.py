@@ -267,9 +267,15 @@ class TripletLossOnline(nn.Module):
         # step 4 - compute scalar loss value by averaging
         num_losses = torch.sum(mask)
         triplet_loss = triplet_loss.sum() / (num_losses + eps)
+        
+        # calculate the average positive and negative distance
+        anchor_positive_dist_sum = (anchor_positive_dists.repeat(1, 1, len(labels)) * mask).sum()
+        anchor_negative_dist_sum = (anchor_negative_dists.repeat(1, len(labels), 1) * mask).sum()
+        anchor_positive_dist_mean = anchor_positive_dist_sum / (num_losses + eps)
+        anchor_negative_dist_mean = anchor_negative_dist_sum / (num_losses + eps)     
 
         # TODO(rob2u): implement positive and negative distance means
-        return triplet_loss, -1, -1
+        return triplet_loss, anchor_positive_dist_mean, anchor_negative_dist_mean
 
     def get_mask(self, distance_matrix, anchor_positive_dists, anchor_negative_dists, labels):
         labels = convert_labels_to_tensor(labels)
