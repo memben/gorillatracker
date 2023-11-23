@@ -3,9 +3,29 @@ from typing import Literal
 import torch
 import torch.nn.functional as F
 from torch import nn
+from sklearn.preprocessing import LabelEncoder
 
 eps = 1e-16  # an arbitrary small value to be used for numerical stability tricks
 
+def convert_labels_to_tensor(labels):
+    """Convert labels to tensor
+    
+    Args:
+        labels: labels in array-like, e.g., list or numpy array. shape: (batch_size,)
+    
+    Returns:
+        Tensor of labels. shape: (batch_size,). That contains labels from 0 to num_classes - 1.
+    """
+    if isinstance(labels, torch.Tensor):
+        return labels
+    
+    if labels is None:
+        return None
+    
+    le = LabelEncoder()
+    labels = le.fit_transform(labels)
+    
+    return torch.tensor(labels)
 
 def get_triplet_mask(labels):
     """Compute a mask for valid triplets
@@ -22,8 +42,9 @@ def get_triplet_mask(labels):
     # step 1 - get a mask for distinct indices
 
     # shape: (batch_size, batch_size)
+    labels = convert_labels_to_tensor(labels)
     batch_size = labels.size()[0]
-    indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
+    indices_equal = torch.eye(batch_size, dtype=torch.bool)
     indices_not_equal = torch.logical_not(indices_equal)
     # shape: (batch_size, batch_size, 1)
     i_not_equal_j = indices_not_equal.unsqueeze(2).repeat(1, 1, batch_size)
@@ -69,7 +90,7 @@ def get_distance_mask(labels, valid: Literal["pos", "neg"] = "neg"):
         A negative distance is valid if:
         `labels[i] != labels[j] and i != j`
     """
-
+    labels = convert_labels_to_tensor(labels)
     batch_size = labels.size()[0]
     indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
     indices_not_equal = torch.logical_not(indices_equal)
@@ -102,6 +123,7 @@ def get_semi_hard_mask(
     """
 
     # filter out all where the distance to a negative is smaller than the max distance to a positive
+    labels = convert_labels_to_tensor(labels)
     batch_size = labels.size()[0]
     indices_equal = torch.eye(batch_size, dtype=torch.bool, device=labels.device)
     indices_not_equal = torch.logical_not(indices_equal)
@@ -237,6 +259,7 @@ class TripletLossOnline(nn.Module):
         # we only want to keep correct and depending on the mode the hardest or semi-hard triplets
         # therefore we create a mask that is 1 for all valid triplets and 0 for all invalid triplets
         mask = self.get_mask(distance_matrix, anchor_positive_dists, anchor_negative_dists, labels)
+        mask.to(triplet_loss.device) # ensure mask is on the same device as triplet_loss
         triplet_loss *= mask
 
         triplet_loss = F.relu(triplet_loss)
@@ -249,6 +272,7 @@ class TripletLossOnline(nn.Module):
         return triplet_loss, -1, -1
 
     def get_mask(self, distance_matrix, anchor_positive_dists, anchor_negative_dists, labels):
+        labels = convert_labels_to_tensor(labels)
         mask = get_triplet_mask(labels)
 
         if self.mode == "hard":  # take only the hardest negative as a negative per anchor
@@ -273,9 +297,7 @@ class TripletLossOnline(nn.Module):
             semi_hard_mask = semi_hard_mask.to(mask.device)
             mask = torch.logical_and(mask, semi_hard_mask)
 
-        mask = mask.float()
-        mask = mask.to(labels.device)
-        return mask
+        return mask.float()
 
 
 class TripletLossOffline(nn.Module):
@@ -328,7 +350,7 @@ if __name__ == "__main__":
     triplet_loss_soft = TripletLossOnline(margin=margin, mode="soft")
     triplet_loss_semi_hard = TripletLossOnline(margin=margin, mode="semi-hard")
     embeddings = torch.tensor([[1.0], [0.5], [-1.0], [0.0]])
-    labels = torch.tensor([0, 0, 1, 1])
+    labels = ["0", "0", "1", "1"]
 
     loss_manual_1 = torch.relu(  # anchor 1.0 positive 0.5 negative 0.0
         torch.linalg.vector_norm(embeddings[0] - embeddings[1])
