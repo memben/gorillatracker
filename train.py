@@ -183,6 +183,7 @@ def main(args: TrainingArgs):
         gradient_clip_val=args.grad_clip,
         # accumulate_grad_batches=args.gradient_accumulation_steps,
         fast_dev_run=args.fast_dev_run,
+        profiler=args.profiler,
         inference_mode=not args.compile,  # inference_mode for val/test and PyTorch 2.0 compiler don't like each other
     )
 
