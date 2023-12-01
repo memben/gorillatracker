@@ -55,5 +55,5 @@ embedding_save_interval: 2      # Embedding save interval
 # Config and Data Arguments
 # wandb_tags: ["research-template"] # WandB tags for experiment tracking
 
-data_dir: "./mnist"
-dataset_class: "gorillatracker.datasets.mnist.MNISTDataset"
+data_dir: ""
+dataset_class: ""
