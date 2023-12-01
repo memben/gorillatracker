@@ -1,3 +1,7 @@
+# !!!
+# NOTE: DO NOT EDIT THIS YAML FILE. INSTEAD, COPY IT TO A NEW FILE AND EDIT THAT FILE.
+# !!!
+
 # Device Arguments
 
 accelerator: cuda               # Device accelerator (e.g., "cuda" for GPU)
