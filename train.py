@@ -185,9 +185,8 @@ def main(args: TrainingArgs):  # noqa: C901
 if __name__ == "__main__":
     print("Starting training script...")
     config_path = "./cfgs/config.yml"
-    print("Parsing config from {}...")
     parsed_arg_groups = parse(TrainingArgs, config_path=config_path)
-    print("Config parsed:", parsed_arg_groups)
+
     # parses the config file as default and overwrites with command line arguments
     # therefore allowing sweeps to overwrite the defaults in config file
     current_process_rank = get_rank()
