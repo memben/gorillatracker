@@ -1,13 +1,13 @@
+import dataclasses
 import os
 import re
 import time
-import dataclasses
 
-from print_on_steroids import logger
 from lightning.pytorch.loggers.wandb import WandbLogger
-from gorillatracker.args import TrainingArgs
+from print_on_steroids import logger
 
 from dlib.frameworks.pytorch import get_rank
+from gorillatracker.args import TrainingArgs
 
 
 class WandbLoggingModule:
