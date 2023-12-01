@@ -188,9 +188,12 @@ class SwinV2BaseWrapper(BaseModule):
             torch.nn.Linear(in_features=self.model.head.fc.in_features, out_features=self.embedding_size),
         )
 
+    def forward(self, x):
+        return self.model(x)
+
     @classmethod
     def get_tensor_transforms(cls):
-        return transforms.Resize((192, 192), antialias=True)
+        return transforms.Resize((192), antialias=True)
 
 
 # NOTE(liamvdv): Register custom model backbones here.

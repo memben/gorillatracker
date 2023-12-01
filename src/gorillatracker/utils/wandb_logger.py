@@ -19,7 +19,7 @@ class WandbLoggingModule:
         self._args_assertions(args)
         self.args = args
         self.wandb_entity = wandb_entity
-        self.run_name = dict(name=args.run_name)
+        self.run_name = args.run_name
         self.project_name = args.project_name
 
         if args.offline or args.fast_dev_run or args.data_preprocessing_only:
@@ -28,14 +28,14 @@ class WandbLoggingModule:
     def _args_assertions(self, args: TrainingArgs):
         asserations = [
             (args.run_name, "No run name specified with `--run_name`. Please specify a run name."),
-            (len(args.run_name.split("-")) >= 2, "Run name must be of the form Issue Number-Purpose"),
+            (len(args.run_name.split("-")) >= 2, "Run name must be of the form <Issue Number>-<Purpose>"),
             (
-                len(args.project_name.split("-")) == 2,
-                "No run name specified with `--project_name`. Please specify a project name.",
+                args.project_name,
+                "No project name specified with `--project_name`. Please specify a project name.",
             ),
             (
                 len(args.project_name.split("-")) >= 4,
-                "Run name must be of the form Issue Function-Backbone-Dataset-Set-Type",
+                "Project name must be of the form <Function>-<Backbone>-<Dataset>-<Set-Type>",
             ),
         ]
 
