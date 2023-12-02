@@ -6,8 +6,9 @@ import torch
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
-
+from torchvision import transforms
 from gorillatracker.triplet_loss import get_triplet_loss
+import timm
 
 
 class BaseModule(L.LightningModule):
@@ -169,9 +170,26 @@ class EfficientNetV2Wrapper(BaseModule):
         #                512 to 8.
         return lambda x: x
 
+class VisionTransformerWrapper(BaseModule):
+    def __init__(
+        self,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        vit_model = "vit_large_patch16_224"
+        self.model = (
+            timm.create_model(vit_model, pretrained=True)
+            if kwargs.get("from_scratch", False)
+            else timm.create_model(vit_model, pretrained=False)
+        )
+        self.model.head = torch.nn.Linear(in_features=self.model.head.in_features, out_features=self.embedding_size)
 
+    @classmethod
+    def get_tensor_transforms(cls):
+        return transforms.Resize((224, 224), antialias=True)
+    
 # NOTE(liamvdv): Register custom model backbones here.
-custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper}
+custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper, "ViT_Large": VisionTransformerWrapper}
 
 
 def get_model_cls(model_name: str):

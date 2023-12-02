@@ -18,7 +18,7 @@ from gorillatracker.metrics import LogEmbeddingsToWandbCallback
 from gorillatracker.model import get_model_cls
 from gorillatracker.train_utils import get_data_module
 
-WANDB_PROJECT = ""  # NOTE(liamvdv): must be changed based on your task.
+WANDB_PROJECT = "Embedding-ViT-CXL-OpenSet"  # NOTE(liamvdv): must be changed based on your task.
 WANDB_ENTITY = "gorillas"
 
 
@@ -222,7 +222,7 @@ def main(args: TrainingArgs):  # noqa: C901
 
 if __name__ == "__main__":
     print("Starting training script...")
-    config_path = "./cfgs/config.yml"
+    config_path = "./cfgs/visiontransformer_cxl.yml"
     print("Parsing config from {}...")
     parsed_arg_groups = parse(TrainingArgs, config_path=config_path)
     # parses the config file as default and overwrites with command line arguments
