@@ -28,13 +28,15 @@ class GorillaVideoTracker:
         """
         files = os.listdir(self.path)
         file_count = len(files)
+        
+        assert all(file.endswith(".json") for file in files), "Error: not all files in path are json files"
+        
         for idx, file in enumerate(files):
-            if idx % logging_iteration == 0 and log is True:
+            if log is True and idx % logging_iteration == 0:
                 print(f"tracking...{idx}/{file_count}", end="\r")
-            if os.path.splitext(file)[1].lower() != ".json":
-                continue
             file_path = os.path.join(self.path, file)
             self.trackFile(file_path, log = False)
+            
         if log is True: 
             print(f"{file_count} files successfully tracked")
                   
