@@ -70,41 +70,35 @@ class GorillaVideoTracker:
             compress: boolean; if videofile should be compressed, default is True
         """
         tracked_files = [file for file in os.listdir(self.out_path) if file.endswith("_tracked.json")]
-        
         max_video_idx = len(tracked_files) if max_video == 0 else min(max_video, len(tracked_files))
 
         for idx, file in enumerate(tracked_files[:max_video_idx]):
             video_name = os.path.basename(file)[:-13] #-13 to remove "_tracked.json"
+            video_file_path = os.path.join(self.video_path, video_name + ".mp4")
+            
             if log is True:
-                print( " " * 80, end= "\r")
+                print( " " * 80, end= "\r") #clear line
                 print(f"saving video {idx + 1}/{max_video_idx + 1}: {video_name}.mp4", end = "\r")
-            self.saveVideo(video_name = video_name, log = False, compress = compress)
+                
+            self.saveVideo(video_file_path, log = False, compress = compress)
                     
         if log is True:
             print( " " * 80, end= "\r") #clear line
             print(f"{max_video_idx + 1} videos successfully saved to {self.video_path}")
             
-    def saveVideo(self, video_name = "", video_path = "", compress = True, log = True):
+    def saveVideo(self, video_path , compress = True, log = True):
         """
         save video with bounding boxes
         parameter:
-            video_name: name of video without path and extension e.g. for /path/to/example.mp4 just example
             video_path: path to videofile e.g. /path/to/example.mp4
             log: boolean; if progress should be logged to the terminal, default is True
             compress: boolean; if videofile should be compressed, default is True
         """
-        #paths
-        if video_name == "" and video_path == "":
-            print("Error: saveVideo(video_name, video_path) called without parameters, expected either video_name or video_path")
-            return
-        if video_name == "":
-            video_name = os.path.splitext(os.path.basename(self.video_path))[0]
-        else:
-            video_path = os.path.join(self.video_path, video_name + ".mp4")
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
         json_path = os.path.join(self.out_path, video_name + "_tracked.json")
-        if not os.path.exists(json_path):
-            print(f"Error: {json_path} not found, try calling track() first")
-            return
+        assert os.path.exists(video_path), f"Error: {video_path} not found"
+        assert os.path.exists(json_path), f"Error: {json_path} not found, try calling track() first"
+
         video_out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
         
         #log
