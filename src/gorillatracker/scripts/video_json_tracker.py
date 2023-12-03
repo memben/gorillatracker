@@ -5,55 +5,54 @@ import subprocess
 
 
 class GorillaVideoTracker:
-    def __init__(self, path, outpath = "", videopath = "", allowed_overlap = 0.25):
+    def __init__(self, path, out_path = "", video_path = "", allowed_overlap = 0.25):
         """ 
         initialize tracking of Individuals on videos with bounding boxes in json
         parameter: 
-            path: path to json file(s)
-            outpath: if not set output will be saved in path directory
-            videopath: path to directory where videos are stored; if not set it will try to get videos from path
+            path: path to json files
+            out_path: if not set output will be saved in path directory
+            video_path: path to directory where videos are stored; if not set it will try to get videos from path
             allowed_overlap: % of the area of bboxes which is allowed to overlap between two individuals, default is 0.25
         """
         self.path = path
-        self.directorypath = ""
-        self.outpath = ""
-        self.videopath = ""
-        self.__mode = ""
-        self.allowed_overlap = allowed_overlap
-        
-        if os.path.isdir(path):
-            self.directorypath = path
-            self.__mode = "directory"
-        else:
-            self.directorypath = os.path.dirname(path)
-            self.__mode = "file"
-            
-        self.outpath = self.directorypath if outpath == "" else outpath   
-        self.videopath = self.directorypath if videopath == "" else videopath    
-              
-    def track(self, log = True):
+        self.allowed_overlap = allowed_overlap    
+        self.out_path = self.path if out_path == "" else out_path   
+        self.video_path = self.path if video_path == "" else video_path    
+    
+    def trackFiles(self, log = True):
         """
         track individuals in path
         parameter:
             log: boolean; if progress should be logged to the terminal, default is True
         """
-        if(self.__mode == "file"):
-            files = [self.path]
-        else:
-            files = os.listdir(self.directorypath)
+        files = os.listdir(self.path)
         file_count = len(files)  
         for idx, file in enumerate(files):
             if(idx % 5 == 0 and log is True):
                 print(f"tracking...{idx}/{file_count}", end="\r")
             if os.path.splitext(file)[1].lower() != ".json":
                 continue
-            data = self.__readFromJson(os.path.join(self.directorypath, file))
-            data, id_count = self.__trackIDs(data)
-            data = self.__labelFaces(data)
-            negatives = self.__getNegatives(data, id_count)
-            self.__writeToJson(os.path.join(self.outpath, os.path.splitext(file)[0] + "_tracked.json"), data, negatives)
+            file_path = os.path.join(self.path, file)
+            self.trackFile(file_path, log = False)
         if log is True: 
             print(f"{file_count} files successfully tracked")
+                  
+    def trackFile(self, file_path, log = True):
+        """
+        track individuals in file
+        parameter:
+            log: boolean; if progress should be logged to the terminal, default is True
+        """
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        if log is True:
+                print(f"tracking {file_name}.json", end="\r")
+        data = self._readFromJson(file_path)
+        data, id_count = self._trackIDs(data)
+        data = self._labelFaces(data)
+        negatives = self._getNegatives(data, id_count)
+        self._writeToJson(os.path.join(self.out_path, file_name + "_tracked.json"), data, negatives)
+        if log is True: 
+            print(f"{file_name}.json successfully tracked and saved as {file_name}_tracked.json")
               
     def saveVideos(self, max_video = 0, log = True):
         """
@@ -63,7 +62,7 @@ class GorillaVideoTracker:
             max_video: int, how many videos should be saved at maximum, 0 means no maximum, default is 0
             compress: boolean; if videofile should be compressed, default is True
         """
-        tracked_files = [file for file in os.listdir(self.outpath) if file.endswith("_tracked.json")]
+        tracked_files = [file for file in os.listdir(self.out_path) if file.endswith("_tracked.json")]
         file_count = len(tracked_files)
         if max_video == 0:
             max_video_idx = file_count + 1
@@ -81,7 +80,7 @@ class GorillaVideoTracker:
             self.saveVideo(video_name = video_name, log = False)        
         if log is True:
             print( " " * 80, end= "\r")
-            print(f"{file_count} videos successfully saved to {self.videopath}")
+            print(f"{file_count} videos successfully saved to {self.video_path}")
             
     def saveVideo(self, video_name = "", video_path = "", compress = True, log = True):
         """
@@ -97,17 +96,17 @@ class GorillaVideoTracker:
             print("Error: saveVideo(video_name, video_path) called without parameters, expected either video_name or video_path")
             return
         if video_name == "":
-            video_name = os.path.splitext(os.path.basename(self.videopath))[0]
+            video_name = os.path.splitext(os.path.basename(self.video_path))[0]
         else:
-            video_path = os.path.join(self.videopath, video_name + ".mp4")
-        json_path = os.path.join(self.outpath, video_name + "_tracked.json")
+            video_path = os.path.join(self.video_path, video_name + ".mp4")
+        json_path = os.path.join(self.out_path, video_name + "_tracked.json")
         if not os.path.exists(json_path):
             print(f"Error: {json_path} not found, try calling track() first")
             return
-        outpath = os.path.join(self.outpath, video_name + "_tracked.mp4")
+        out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
         #log
         if log is True:
-            print(f"saving video {video_name}.mp4 to {self.videopath}", end = "\r")
+            print(f"saving video {video_name}.mp4 to {self.video_path}", end = "\r")
         #input video
         video = cv2.VideoCapture(video_path)
         #output video
@@ -116,9 +115,9 @@ class GorillaVideoTracker:
         fps = int(video.get(cv2.CAP_PROP_FPS))
         box_color = (255, 0, 0)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(outpath, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
         #json
-        json_data = self.__readFromJson(json_path)
+        json_data = self._readFromJson(json_path)
         #iterate over frames, draw bboxes and labels and write to outputfile
         for frame_number, bboxes in enumerate(json_data["labels"]):
             ret, frame = video.read()
@@ -137,19 +136,19 @@ class GorillaVideoTracker:
         out.release()
         
         if compress is True:
-            compressed_file_path = os.path.join(self.outpath, video_name + "_tracked_c.mp4")
-            subprocess.call(f"ffmpeg -i {outpath} -s 1280x720 -acodec copy -y {compressed_file_path}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            os.remove(outpath)
-            os.rename(compressed_file_path, outpath)
+            compressed_file_path = os.path.join(self.out_path, video_name + "_tracked_c.mp4")
+            subprocess.call(f"ffmpeg -i {out_path} -s 1280x720 -acodec copy -y {compressed_file_path}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.remove(out_path)
+            os.rename(compressed_file_path, out_path)
             #vscode can't download/open the file without the next 2 lines
-            open_for_vscode_bugfix = cv2.VideoCapture(outpath)
+            open_for_vscode_bugfix = cv2.VideoCapture(out_path)
             open_for_vscode_bugfix.release()
             
         #log
         if log is True:
-            print(f"video {video_name}.mp4 successfully saved to {self.videopath}")
+            print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
     
-    def __readFromJson(self, path):
+    def _readFromJson(self, path):
         """
         reads data from json file
         parameter:
@@ -161,7 +160,7 @@ class GorillaVideoTracker:
             data = json.load(file)
         return data
     
-    def __writeToJson(self, path, data, negatives):
+    def _writeToJson(self, path, data, negatives):
         """
         writes bboxes and IDs to json file
         parameter:
@@ -174,7 +173,7 @@ class GorillaVideoTracker:
         with open(path, "w") as file:
             json.dump(data, file, indent=4)
 
-    def __bboxesOverlap(self, bbox1, bbox2, allowed_overlap = 0.25, width = 1920, height = 1080):
+    def _bboxesOverlap(self, bbox1, bbox2, allowed_overlap = 0.25, width = 1920, height = 1080):
         """
         check if bboxes overlap
         parameter:
@@ -196,7 +195,7 @@ class GorillaVideoTracker:
                     y2 + h2 <= y1)
         return overlap
 
-    def __trackIDs(self, data):
+    def _trackIDs(self, data):
         """
         track individuals and create IDs; also removes bboxes when they overlap too much
         parameter:
@@ -212,7 +211,7 @@ class GorillaVideoTracker:
             #iterate over bounding boxes and delete colliding ones
             for bbox in bboxes[:]:
                 for otherbbox in bboxes[:]:
-                    if bbox != otherbbox and self.__bboxesOverlap(bbox, otherbbox, allowed_overlap = self.allowed_overlap):
+                    if bbox != otherbbox and self._bboxesOverlap(bbox, otherbbox, allowed_overlap = self.allowed_overlap):
                         if bbox in frame_data:
                             frame_data.remove(bbox)
                         if otherbbox in frame_data:
@@ -221,7 +220,7 @@ class GorillaVideoTracker:
             for bbox in bboxes:
                 #check if individual already detected
                 for id in openIDs:
-                    if self.__bboxesOverlap(bbox, id, allowed_overlap = 0.5) and ((0.9 * id["w"] <= bbox["w"] <= 1.1 * id["w"]) or (0.95 * id["h"] <= bbox["h"] <= 1.05 * id["h"])):
+                    if self._bboxesOverlap(bbox, id, allowed_overlap = 0.5) and ((0.9 * id["w"] <= bbox["w"] <= 1.1 * id["w"]) or (0.95 * id["h"] <= bbox["h"] <= 1.05 * id["h"])):
                         bbox["id"] = id["id"]
                         id["ttl"] += 1
                         id["center_x"], id["center_y"], id["w"], id["h"] = bbox["center_x"], bbox["center_y"], bbox["w"], bbox["h"]
@@ -238,7 +237,7 @@ class GorillaVideoTracker:
             
         return data, id_count
 
-    def __labelFaces(self, data):
+    def _labelFaces(self, data):
         """
         label the face bboxes according to the already labeled body bboxes
         parameter:
@@ -254,14 +253,14 @@ class GorillaVideoTracker:
                     frame_data.remove(face_bbox)
                     continue
                 for body_bbox in body_bboxes:
-                    if self.__bboxesOverlap(face_bbox, body_bbox, allowed_overlap=0):
+                    if self._bboxesOverlap(face_bbox, body_bbox, allowed_overlap=0):
                         face_bbox["id"] = body_bbox["id"]
                 if "id" not in face_bbox:
                     frame_data.remove(face_bbox)
                         
         return data
             
-    def __getNegatives(self, data, id_count):
+    def _getNegatives(self, data, id_count):
         """
         creates a list of lists which stores IDs which are possible negatives, because they existed at the same time
         parameter:
