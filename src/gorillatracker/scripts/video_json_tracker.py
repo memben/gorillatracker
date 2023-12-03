@@ -47,13 +47,17 @@ class GorillaVideoTracker:
             log: boolean; if progress should be logged to the terminal, default is True
         """
         file_name = os.path.splitext(os.path.basename(file_path))[0]
+        out_file = os.path.join(self.out_path, file_name + "_tracked.json")
+        
         if log is True:
                 print(f"tracking {file_name}.json", end="\r")
+                
         data = self._readFromJson(file_path)
         data, id_count = self._trackIDs(data)
         data = self._labelFaces(data)
         negatives = self._getNegatives(data, id_count)
-        self._writeToJson(os.path.join(self.out_path, file_name + "_tracked.json"), data, negatives)
+        self._writeToJson(out_file, data, negatives)
+        
         if log is True: 
             print(f"{file_name}.json successfully tracked and saved as {file_name}_tracked.json")
               
