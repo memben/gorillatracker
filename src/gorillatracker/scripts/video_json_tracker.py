@@ -123,6 +123,13 @@ class GorillaVideoTracker:
             print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
             
     def _processVideo(self, video_path, json_path, video_out_path):
+        """
+        processes the video, drawing bboxes and labels and writing to outputfile
+        parameter:
+            video_path: path to video
+            json_path: path to json file
+            video_out_path: path where the video will be saved
+        """
         #input video
         video = cv2.VideoCapture(video_path)
         #output video
