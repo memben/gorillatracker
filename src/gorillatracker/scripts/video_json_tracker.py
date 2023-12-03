@@ -105,9 +105,23 @@ class GorillaVideoTracker:
             print(f"Error: {json_path} not found, try calling track() first")
             return
         video_out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
+        
         #log
         if log is True:
             print(f"saving video {video_name}.mp4 to {self.video_path}", end = "\r")
+            
+        #process video
+        self._processVideo(video_path, json_path, video_out_path)
+        
+        #compress
+        if compress is True:
+            self._compressVideo(video_out_path)
+            
+        #log
+        if log is True:
+            print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
+            
+    def _processVideo(self, video_path, json_path, video_out_path):
         #input video
         video = cv2.VideoCapture(video_path)
         #output video
@@ -135,14 +149,7 @@ class GorillaVideoTracker:
                 
         video.release()
         out.release()
-        
-        if compress is True:
-            self._compressVideo(video_out_path)
-            
-        #log
-        if log is True:
-            print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
-            
+                
     def _compressVideo(self, video_path, resolution = "1280x720"):
         """
         compresses video to resolution
