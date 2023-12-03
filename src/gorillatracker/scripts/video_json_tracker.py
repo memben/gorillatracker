@@ -212,7 +212,7 @@ class GorillaVideoTracker:
                     y2 + h2 <= y1)
         return overlap
 
-    def _trackIDs(self, data):
+    def _trackIDs(self, data, ttl = 10):
         """
         track individuals and create IDs; also removes bboxes when they overlap too much
         parameter:
@@ -220,33 +220,40 @@ class GorillaVideoTracker:
         return values:
             data: json data of the video including IDs in each bbox
             id_count: int; number of tracked individuals
+            ttl: int; how many frames an individual can be not detected before it is removed, default is 15
         """
+        overlap = 0.5 #how much overlap is nessesary between to frames to be considered the same individual
+        body_class = 0
+        width_scale = 0.1 #how much the width of a bbox can change in % between frames to be considered the same individual
+        height_scale = 0.05 #how much the height of a bbox can change in % between frames to be considered the same individual
+        
         id_count = -1
         openIDs = []
-        for frame, frame_data in enumerate(data["labels"]):
-            bboxes = [bbox for bbox in frame_data if bbox["class"] == 0]
+        
+        for frame_data in data["labels"]:
             #iterate over bounding boxes and delete colliding ones
-            for bbox in bboxes[:]:
-                for otherbbox in bboxes[:]:
-                    if bbox != otherbbox and self._bboxesOverlap(bbox, otherbbox, allowed_overlap = self.allowed_overlap):
-                        if bbox in frame_data:
-                            frame_data.remove(bbox)
-                        if otherbbox in frame_data:
-                            frame_data.remove(otherbbox)
+            bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
+            colliding_bboxes = [bbox1 for bbox1 in bboxes for bbox2 in bboxes if bbox1 != bbox2 and self.__bboxesOverlap(bbox1, bbox2, self.allowed_overlap)]
+            for bbox in colliding_bboxes:
+                frame_data.remove(bbox)
+            
             #iterate over remaning bboxes and give IDs
+            bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
             for bbox in bboxes:
                 #check if individual already detected
                 for id in openIDs:
-                    if self._bboxesOverlap(bbox, id, allowed_overlap = 0.5) and ((0.9 * id["w"] <= bbox["w"] <= 1.1 * id["w"]) or (0.95 * id["h"] <= bbox["h"] <= 1.05 * id["h"])):
+                    scale_match =(((1-width_scale) * id["w"] <= bbox["w"] <= (1+width_scale) * id["w"]) or ((1-height_scale) * id["h"] <= bbox["h"] <= (1+height_scale) * id["h"]))
+                    if self._bboxesOverlap(bbox, id, allowed_overlap = overlap) and scale_match:
                         bbox["id"] = id["id"]
-                        id["ttl"] += 1
-                        id["center_x"], id["center_y"], id["w"], id["h"] = bbox["center_x"], bbox["center_y"], bbox["w"], bbox["h"]
+                        id.update(center_x = bbox["center_x"], center_y = bbox["center_y"], w = bbox["w"], h = bbox["h"], ttl = ttl)
                         break
+                    
                 #new individual
                 if "id" not in bbox:
                     id_count += 1
                     bbox["id"] = id_count
-                    openIDs.append(dict(id = id_count, center_x = bbox["center_x"], center_y = bbox["center_y"], w = bbox["w"], h = bbox["h"], ttl = 15))
+                    openIDs.append(dict(id = id_count, center_x = bbox["center_x"], center_y = bbox["center_y"], w = bbox["w"], h = bbox["h"], ttl = ttl))
+                    
             #decrease ttl (and remove) not tracked IDs from list
             for id in openIDs:
                 id["ttl"] -= 1
