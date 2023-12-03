@@ -9,6 +9,8 @@ from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
 
 from gorillatracker.triplet_loss import get_triplet_loss
 
+import timm
+
 
 class BaseModule(L.LightningModule):
     """
@@ -167,9 +169,20 @@ class EfficientNetV2Wrapper(BaseModule):
         self.model.classifier = torch.nn.Sequential(
             torch.nn.Linear(in_features=self.model.classifier[1].in_features, out_features=self.embedding_size),
         )
+        
+class ConvNeXtV2Wrapper(BaseModule):
+    def __init__(
+        self,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.model = (
+            timm.create_model("convnextv2_base", pretrained=not self.from_scratch)
+        )
+        self.model.reset_classifier(self.embedding_size)
 
 # NOTE(liamvdv): Register custom model backbones here.
-custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper}
+custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper, "ConvNeXtV2_Base": ConvNeXtV2Wrapper}
 
 def get_model_cls(model_name: str):
     model_cls = custom_model_cls.get(model_name, None)
