@@ -230,6 +230,7 @@ class GorillaVideoTracker:
         id_count = -1
         openIDs = []
         
+        #iterate over frames in video
         for frame_data in data["labels"]:
             #iterate over bounding boxes and delete colliding ones
             bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
