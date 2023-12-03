@@ -201,11 +201,18 @@ class GorillaVideoTracker:
             overlap: boolean; True if bboxes overlap
         """
         resize = 1 - allowed_overlap
-        w1, h1, w2, h2 = int(bbox1["w"] * resize * width), int(bbox1["h"] * resize * height), int(bbox2["w"] * resize * width), int(bbox2["h"] * resize * height)
+        
+        #bbox1
+        w1 = int(bbox1["w"] * resize * width)
+        h1 = int(bbox1["h"] * resize * height)
         x1 = int(bbox1["center_x"] * width - w1 / 2)
         y1 = int(bbox1["center_y"] * height - h1 / 2)
+        #bbox2
+        w2 = int(bbox2["w"] * resize * width)
+        h2 = int(bbox2["h"] * resize * height)
         x2 = int(bbox2["center_x"] * width - w2 / 2)
         y2 = int(bbox2["center_y"] * height - h2 / 2)
+        
         overlap = not (x1 + w1 <= x2 or
                     x2 + w2 <= x1 or
                     y1 + h1 <= y2 or
@@ -270,9 +277,11 @@ class GorillaVideoTracker:
         return value:
             data: json data of the video including IDs for the face bboxes
         """
+        body_class = 0
+        face_class = 1
         for frame_data in data["labels"]:
-            body_bboxes = [bbox for bbox in frame_data if bbox["class"] == 0]
-            face_bboxes = [bbox for bbox in frame_data if bbox["class"] == 1]
+            body_bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
+            face_bboxes = [bbox for bbox in frame_data if bbox["class"] == face_class]
             for face_bbox in face_bboxes:
                 if len(body_bboxes) == 0:
                     frame_data.remove(face_bbox)
