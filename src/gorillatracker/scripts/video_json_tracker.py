@@ -70,9 +70,9 @@ class GorillaVideoTracker:
             compress: boolean; if videofile should be compressed, default is True
         """
         tracked_files = [file for file in os.listdir(self.out_path) if file.endswith("_tracked.json")]
-        max_video_idx = len(tracked_files) if max_video == 0 else min(max_video, len(tracked_files))
+        max_video_idx = len(tracked_files) if max_video == 0 else min(max_video -1, len(tracked_files))
 
-        for idx, file in enumerate(tracked_files[:max_video_idx]):
+        for idx, file in enumerate(tracked_files[:max_video_idx + 1]):
             video_name = os.path.basename(file)[:-13] #-13 to remove "_tracked.json"
             video_file_path = os.path.join(self.video_path, video_name + ".mp4")
             
@@ -84,9 +84,9 @@ class GorillaVideoTracker:
                     
         if log is True:
             print( " " * 80, end= "\r") #clear line
-            print(f"{max_video_idx + 1} videos successfully saved to {self.video_path}")
+            print(f"{max_video_idx + 1} videos successfully saved to {self.out_path}")
             
-    def saveVideo(self, video_path , compress = True, log = True):
+    def saveVideo(self, video_path , log = True, compress = True):
         """
         save video with bounding boxes
         parameter:
@@ -103,7 +103,7 @@ class GorillaVideoTracker:
 
         #log
         if log is True:
-            print(f"saving video {video_name}.mp4 to {self.video_path}", end = "\r")
+            print(f"saving video {video_name}.mp4 to {self.out_path}", end = "\r")
             
         #process video
         self._processVideo(video_path, json_path, video_out_path)
@@ -114,7 +114,7 @@ class GorillaVideoTracker:
             
         #log
         if log is True:
-            print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
+            print(f"video {video_name}.mp4 successfully saved to {self.out_path}")
             
     def _processVideo(self, video_path, json_path, video_out_path):
         """
@@ -221,7 +221,7 @@ class GorillaVideoTracker:
                     y2 + h2 <= y1)
         return overlap
 
-    def _trackIDs(self, data, ttl = 10):
+    def _trackIDs(self, data, ttl = 15):
         """
         track individuals and create IDs; also removes bboxes when they overlap too much
         parameter:
@@ -243,9 +243,10 @@ class GorillaVideoTracker:
         for frame_data in data["labels"]:
             #iterate over bounding boxes and delete colliding ones
             bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
-            colliding_bboxes = [bbox1 for bbox1 in bboxes for bbox2 in bboxes if bbox1 != bbox2 and self.__bboxesOverlap(bbox1, bbox2, self.allowed_overlap)]
-            for bbox in colliding_bboxes:
-                frame_data.remove(bbox)
+            colliding_bboxes = [bbox1 for bbox1 in bboxes for bbox2 in bboxes if bbox1 != bbox2 and self._bboxesOverlap(bbox1, bbox2, self.allowed_overlap)]
+            for bbox in colliding_bboxes[:]:
+                if bbox in frame_data:
+                    frame_data.remove(bbox)
             
             #iterate over remaning bboxes and give IDs
             bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
@@ -319,4 +320,3 @@ class GorillaVideoTracker:
                         negatives[id].add(frame_id)
                         
         return negatives
-    
