@@ -96,11 +96,11 @@ class GorillaVideoTracker:
         """
         video_name = os.path.splitext(os.path.basename(video_path))[0]
         json_path = os.path.join(self.out_path, video_name + "_tracked.json")
+        video_out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
+        
         assert os.path.exists(video_path), f"Error: {video_path} not found"
         assert os.path.exists(json_path), f"Error: {json_path} not found, try calling track() first"
 
-        video_out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
-        
         #log
         if log is True:
             print(f"saving video {video_name}.mp4 to {self.video_path}", end = "\r")
