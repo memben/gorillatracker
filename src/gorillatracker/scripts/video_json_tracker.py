@@ -279,6 +279,7 @@ class GorillaVideoTracker:
         """
         body_class = 0
         face_class = 1
+        
         for frame_data in data["labels"]:
             body_bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
             face_bboxes = [bbox for bbox in frame_data if bbox["class"] == face_class]
@@ -302,9 +303,11 @@ class GorillaVideoTracker:
         return value:
             negatives: list of lists; at negatives[ID] stores a list of IDs which are negatives for ID
         """
+        body_class = 0
         negatives = [set() for i in range(id_count + 1)]
-        for frame, frame_data in enumerate(data["labels"]):
-            bboxes = [bbox for bbox in frame_data if bbox["class"] == 0]
+        
+        for frame_data in data["labels"]:
+            bboxes = [bbox for bbox in frame_data if bbox["class"] == body_class]
             frame_ids = set()
             for bbox in bboxes:
                 frame_ids.add(bbox["id"])
@@ -312,5 +315,6 @@ class GorillaVideoTracker:
                 for frame_id in frame_ids:
                     if frame_id != id:
                         negatives[id].add(frame_id)
+                        
         return negatives
     
