@@ -55,12 +55,12 @@ class GorillaVideoTracker:
         if log is True: 
             print(f"{file_name}.json successfully tracked and saved as {file_name}_tracked.json")
               
-    def saveVideos(self, max_video = 0, log = True):
+    def saveVideos(self, max_video = 0, log = True, compress = True):
         """
         save videos with bounding boxes for all tracked files
         parameter:
-            log: boolean; if progress should be logged to the terminal, default is True            
             max_video: int, how many videos should be saved at maximum, 0 means no maximum, default is 0
+            log: boolean; if progress should be logged to the terminal, default is True            
             compress: boolean; if videofile should be compressed, default is True
         """
         tracked_files = [file for file in os.listdir(self.out_path) if file.endswith("_tracked.json")]
@@ -78,7 +78,7 @@ class GorillaVideoTracker:
             if log is True:
                 print( " " * 80, end= "\r")
                 print(f"saving video {idx + 1}/{file_count}: {video_name}.mp4", end = "\r")
-            self.saveVideo(video_name = video_name, log = False)        
+            self.saveVideo(video_name = video_name, log = False, compress = compress)        
         if log is True:
             print( " " * 80, end= "\r")
             print(f"{file_count} videos successfully saved to {self.video_path}")
@@ -104,7 +104,7 @@ class GorillaVideoTracker:
         if not os.path.exists(json_path):
             print(f"Error: {json_path} not found, try calling track() first")
             return
-        out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
+        video_out_path = os.path.join(self.out_path, video_name + "_tracked.mp4")
         #log
         if log is True:
             print(f"saving video {video_name}.mp4 to {self.video_path}", end = "\r")
@@ -116,7 +116,7 @@ class GorillaVideoTracker:
         fps = int(video.get(cv2.CAP_PROP_FPS))
         box_color = (255, 0, 0)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(video_out_path, fourcc, fps, (width, height))
         #json
         json_data = self._readFromJson(json_path)
         #iterate over frames, draw bboxes and labels and write to outputfile
@@ -137,17 +137,26 @@ class GorillaVideoTracker:
         out.release()
         
         if compress is True:
-            compressed_file_path = os.path.join(self.out_path, video_name + "_tracked_c.mp4")
-            subprocess.call(f"ffmpeg -i {out_path} -s 1280x720 -acodec copy -y {compressed_file_path}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            os.remove(out_path)
-            os.rename(compressed_file_path, out_path)
-            #vscode can't download/open the file without the next 2 lines
-            open_for_vscode_bugfix = cv2.VideoCapture(out_path)
-            open_for_vscode_bugfix.release()
+            self._compressVideo(video_out_path)
             
         #log
         if log is True:
             print(f"video {video_name}.mp4 successfully saved to {self.video_path}")
+            
+    def _compressVideo(self, video_path, resolution = "1280x720"):
+        """
+        compresses video to resolution
+        parameter:
+            video_path: path to video
+            resolution: resolution of output video, default is 1280x720
+        """
+        compressed_file_path = os.path.join(os.path.splitext(video_path)[0] + "_c.mp4")
+        subprocess.call(f"ffmpeg -i {video_path} -s {resolution} -acodec copy -y {compressed_file_path}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.remove(video_path)
+        os.rename(compressed_file_path, video_path)
+        #vscode can't download/open the file without the next 2 lines
+        open_for_vscode_bugfix = cv2.VideoCapture(video_path)
+        open_for_vscode_bugfix.release()
     
     def _readFromJson(self, path):
         """
