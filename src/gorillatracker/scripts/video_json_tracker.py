@@ -15,20 +15,21 @@ class GorillaVideoTracker:
             allowed_overlap: % of the area of bboxes which is allowed to overlap between two individuals, default is 0.25
         """
         self.path = path
-        self.allowed_overlap = allowed_overlap    
         self.out_path = self.path if out_path == "" else out_path   
         self.video_path = self.path if video_path == "" else video_path    
+        self.allowed_overlap = allowed_overlap    
     
-    def trackFiles(self, log = True):
+    def trackFiles(self, log = True, logging_iteration = 5):
         """
         track individuals in path
         parameter:
             log: boolean; if progress should be logged to the terminal, default is True
+            logging_iteration: int; how often progress should be logged, default is 5
         """
         files = os.listdir(self.path)
-        file_count = len(files)  
+        file_count = len(files)
         for idx, file in enumerate(files):
-            if(idx % 5 == 0 and log is True):
+            if idx % logging_iteration == 0 and log is True:
                 print(f"tracking...{idx}/{file_count}", end="\r")
             if os.path.splitext(file)[1].lower() != ".json":
                 continue
