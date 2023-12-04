@@ -176,13 +176,14 @@ class VisionTransformerWrapper(BaseModule):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        vit_model = "vit_large_patch16_224"
+        vit_model = "vit_huge_patch14_224"
         self.model = (
             timm.create_model(vit_model, pretrained=True)
             if kwargs.get("from_scratch", False)
             else timm.create_model(vit_model, pretrained=False)
         )
-        self.model.head = torch.nn.Linear(in_features=self.model.head.in_features, out_features=self.embedding_size)
+        
+        self.model.head = torch.nn.Linear(in_features=self.model.num_features, out_features=self.embedding_size)
 
     @classmethod
     def get_tensor_transforms(cls):
