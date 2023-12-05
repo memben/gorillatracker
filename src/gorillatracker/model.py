@@ -157,16 +157,15 @@ class EfficientNetV2Wrapper(BaseModule):
         self.model.classifier = torch.nn.Sequential(
             torch.nn.Linear(in_features=self.model.classifier[1].in_features, out_features=self.embedding_size),
         )
-        
+
+
 class ConvNeXtV2Wrapper(BaseModule):
     def __init__(
         self,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        self.model = (
-            timm.create_model("convnextv2_base", pretrained=not self.from_scratch)
-        )
+        self.model = timm.create_model("convnextv2_base", pretrained=not self.from_scratch)
         self.model.reset_classifier(self.embedding_size)
 
     def forward(self, x):
@@ -202,7 +201,11 @@ class SwinV2BaseWrapper(BaseModule):
 
 
 # NOTE(liamvdv): Register custom model backbones here.
-custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper, "SwinV2Base": SwinV2BaseWrapper, "ConvNeXtV2_Base": ConvNeXtV2Wrapper}
+custom_model_cls = {
+    "EfficientNetV2_Large": EfficientNetV2Wrapper,
+    "SwinV2Base": SwinV2BaseWrapper,
+    "ConvNeXtV2_Base": ConvNeXtV2Wrapper,
+}
 
 
 def get_model_cls(model_name: str):
