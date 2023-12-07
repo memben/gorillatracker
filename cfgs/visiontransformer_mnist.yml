@@ -9,6 +9,7 @@ workers: 4                      # Number of workers for data loading
 
 
 # Model and Training Arguments
+project_name: "Embedding-ViT-MNIST"
 run_name: "12-Test_ViT_Large_patch16"           # Name for this training run
 wandb_tags: ["test"]            # WandB tags for experiment tracking
 model_name_or_path: "ViT_Large" # Model name or path 

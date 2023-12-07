@@ -10,7 +10,6 @@ from torch.optim import AdamW
 from torchvision.models import EfficientNet_V2_L_Weights, efficientnet_v2_l
 from torchvision import transforms
 from gorillatracker.triplet_loss import get_triplet_loss
-import timm
 
 
 class BaseModule(L.LightningModule):
@@ -178,18 +177,21 @@ class VisionTransformerWrapper(BaseModule):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        vit_model = "vit_huge_patch14_224"
-        self.model = (
-            timm.create_model(vit_model, pretrained=True)
-            if kwargs.get("from_scratch", False)
-            else timm.create_model(vit_model, pretrained=False)
-        )
+        vit_model = "vit_large_patch16_224"
+        # self.model = (
+        #     timm.create_model(vit_model, pretrained=True)
+        #     if kwargs.get("from_scratch", False)
+        #     else timm.create_model(vit_model, pretrained=False)
+        # )
         
-        self.model.head = torch.nn.Linear(in_features=self.model.num_features, out_features=self.embedding_size)
-
+        self.model = timm.create_model(vit_model, pretrained = not self.from_scratch)
+        
+        # self.model.head = torch.nn.Linear(in_features=self.model.num_features, out_features=self.embedding_size)
+        self.model.reset_classifier(self.embedding_size)
+        
     @classmethod
     def get_tensor_transforms(cls):
-        return transforms.Resize((224, 224), antialias=True)
+        return transforms.Resize((224), antialias=True)
     
 class SwinV2BaseWrapper(BaseModule):
     def __init__(
@@ -216,7 +218,9 @@ class SwinV2BaseWrapper(BaseModule):
 
 
 # NOTE(liamvdv): Register custom model backbones here.
-custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper, "SwinV2Base": SwinV2BaseWrapper, "ViT_Large": VisionTransformerWrapper}
+custom_model_cls = {"EfficientNetV2_Large": EfficientNetV2Wrapper, 
+                    "SwinV2Base": SwinV2BaseWrapper, 
+                    "ViT_Large": VisionTransformerWrapper}
 
 
 def get_model_cls(model_name: str):
