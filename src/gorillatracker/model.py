@@ -187,7 +187,7 @@ class ConvNeXtV2Wrapper(BaseModule):
         return transforms.Resize((224), antialias=True)
 
 class VisionTransformerWrapper(BaseModule):
-    def __init__(
+    def __init__(  # type: ignore
         self,
         **kwargs,
     ) -> None:
@@ -197,7 +197,7 @@ class VisionTransformerWrapper(BaseModule):
         self.model.reset_classifier(self.embedding_size)
         
     @classmethod
-    def get_tensor_transforms(cls):
+    def get_tensor_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
         return transforms.Resize((224), antialias=True)
     
 class SwinV2BaseWrapper(BaseModule):
