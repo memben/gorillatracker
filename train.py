@@ -87,7 +87,7 @@ def main(args: TrainingArgs) -> None:  # noqa: C901
 
     #################### Construct dataloaders & trainer #################
     dm = get_data_module(
-        args.dataset_class, str(args.data_dir), args.batch_size, args.loss_mode, model.get_tensor_transforms()
+        args.dataset_class, str(args.data_dir), args.batch_size, args.loss_mode, model.get_tensor_transforms(), model.get_training_transforms()
     )
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 

@@ -25,10 +25,10 @@
     "runArgs": [
         "--ipc=host",
         // UNSAFE. Use with caution. Changes propagate to host.
-        // "--pid=host",
+        "--pid=host",
         // DO NOT COMMIT THIS ENABLED TO REMOTE.
-        // "--gpus",
-        // "device=1",
+        "--gpus",
+        "device=0",
         "-u",
         "0"
     ],

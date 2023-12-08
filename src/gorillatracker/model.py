@@ -6,6 +6,7 @@ import pandas as pd
 import timm
 import torch
 import torchvision.transforms as transforms
+import torchvision.transforms.v2 as transforms_v2
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision.models import (
@@ -151,6 +152,10 @@ class BaseModule(L.LightningModule):
             "Please implement this method in your subclass: resizes, normalizations, etc. To apply nothing, return the identity function `lambda x: x`"
         )
 
+    def get_training_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
+        """Add your data augmentations here. Function will be called after get_tensor_transforms in the training loop"""
+        return lambda x: x
+
 
 class EfficientNetV2Wrapper(BaseModule):
     def __init__(  # type: ignore
@@ -219,7 +224,20 @@ class SwinV2BaseWrapper(BaseModule):
 
     @classmethod
     def get_tensor_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
-        return transforms.Resize((192), antialias=True)
+        return transforms.Compose(
+            [
+                transforms.Resize((192), antialias=True),
+                transforms.CenterCrop((192, 192)),
+            ]
+        )
+
+    @classmethod
+    def get_training_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
+        return transforms.RandomErasing(
+            p=1,
+            value=(0.169, 0.451, 0.341),
+            scale=(0.02, 0.13),
+        )
 
 
 class ResNet18Wrapper(BaseModule):
