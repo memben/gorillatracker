@@ -5,7 +5,6 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torchvision.transforms.v2 as transforms_v2
 
 import gorillatracker.type_helper as gtypes
 from gorillatracker.transform_utils import SquarePad
@@ -73,10 +72,6 @@ if __name__ == "__main__":
         "data/splits/use_for_baseline_cxl_face-openset_origin_robert", "train", CXLDataset.get_transforms()
     )
     image = cxl[0][0]
-    image = transforms.RandomErasing(
-        p=1,
-        value=(0.169, 0.451, 0.341),
-        scale=(0.02, 0.13),
-    )(image)
+    image = transforms.GaussianBlur(kernel_size=(7, 13), sigma=(9, 11))(image)
     pil_image = transforms.ToPILImage()(image)
     pil_image.save("test.png")

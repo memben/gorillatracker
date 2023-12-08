@@ -6,7 +6,6 @@ import pandas as pd
 import timm
 import torch
 import torchvision.transforms as transforms
-import torchvision.transforms.v2 as transforms_v2
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision.models import (
@@ -233,11 +232,7 @@ class SwinV2BaseWrapper(BaseModule):
 
     @classmethod
     def get_training_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
-        return transforms.RandomErasing(
-            p=1,
-            value=(0.169, 0.451, 0.341),
-            scale=(0.02, 0.13),
-        )
+        return lambda x: x
 
 
 class ResNet18Wrapper(BaseModule):
