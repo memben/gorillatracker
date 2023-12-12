@@ -96,6 +96,7 @@ def main(args: TrainingArgs) -> None:  # noqa: C901
         args.batch_size,
         args.loss_mode,
         model_transforms,
+        model.get_training_transforms(),
     )
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
