@@ -234,6 +234,7 @@ class SwinV2BaseWrapper(BaseModule):
     def get_training_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
         return lambda x: x
 
+
 class ResNet18Wrapper(BaseModule):
     def __init__(  # type: ignore
         self,
