@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
 
 import torch
+import torchvision.transforms.v2 as transforms_v2
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torchvision.transforms.v2 as transforms_v2
 
 import gorillatracker.type_helper as gtypes
 from gorillatracker.transform_utils import SquarePad

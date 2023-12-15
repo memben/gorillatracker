@@ -5,10 +5,10 @@ import lightning as L
 import pandas as pd
 import timm
 import torch
+import torchvision.transforms.v2 as transforms_v2
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision import transforms
-import torchvision.transforms.v2 as transforms_v2
 from torchvision.models import (
     EfficientNet_V2_L_Weights,
     ResNet18_Weights,
