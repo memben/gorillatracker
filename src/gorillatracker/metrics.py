@@ -22,9 +22,9 @@ Runner = Any
 
 def log_as_wandb_table(embeddings_table: pd.DataFrame, run: Runner) -> None:
     tmp = embeddings_table.apply(
-        lambda row: pd.concat([pd.Series([row["label"]]), pd.Series(row["embedding"])]), axis=1
+        lambda row: pd.concat([pd.Series([row["label"]]), pd.Series(row["embedding"]), pd.Series(row["image"])]), axis=1
     )
-    tmp.columns = ["label"] + [f"embedding_{i}" for i in range(len(embeddings_table["embedding"].iloc[0]))]
+    tmp.columns = ["label"] + [f"embedding_{i}" for i in range(len(embeddings_table["embedding"].iloc[0]))] + ["image"]
     run.log({"embeddings": wandb.Table(dataframe=tmp)})  # type: ignore
 
 
@@ -46,7 +46,7 @@ class LogEmbeddingsToWandbCallback(L.Callback):
 
     def on_validation_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         embeddings_table = pl_module.embeddings_table
-
+        log_as_wandb_table(embeddings_table, self.run)
         current_epoch = trainer.current_epoch
         assert trainer.max_epochs is not None
         if (current_epoch % self.every_n_val_epochs == 0 and current_epoch not in self.logged_epochs) or (
