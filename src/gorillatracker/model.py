@@ -5,8 +5,8 @@ import lightning as L
 import pandas as pd
 import timm
 import torch
-import wandb
 import torchvision.transforms.v2 as transforms_v2
+import wandb
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision import transforms
@@ -95,11 +95,13 @@ class BaseModule(L.LightningModule):
         self.log("train/negative_distance", neg_dist, on_step=True)
         return loss
 
-    def add_validation_embeddings(self, anchor_embeddings: torch.Tensor, anchor_labels: gtypes.MergedLabels, anchor_tensors: list[torch.Tensor]) -> None:
+    def add_validation_embeddings(
+        self, anchor_embeddings: torch.Tensor, anchor_labels: gtypes.MergedLabels, anchor_tensors: list[torch.Tensor]
+    ) -> None:
         # save anchor embeddings of validation step for later analysis in W&B
         embeddings = torch.reshape(anchor_embeddings, (-1, self.embedding_size))
         embeddings = embeddings.cpu()
-        
+
         images = [image.cpu() for image in anchor_tensors]
 
         assert len(self.embeddings_table_columns) == 3
@@ -108,7 +110,7 @@ class BaseModule(L.LightningModule):
             if torch.is_tensor(anchor_labels)  # type: ignore
             else anchor_labels,
             self.embeddings_table_columns[1]: [embedding.numpy() for embedding in embeddings],
-            self.embeddings_table_columns[2]: [wandb.Image(image) for image in images]
+            self.embeddings_table_columns[2]: [wandb.Image(image) for image in images],
         }
 
         df = pd.DataFrame(data)
