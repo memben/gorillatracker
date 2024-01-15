@@ -1,4 +1,5 @@
 import importlib
+import os
 from typing import Callable, Type
 
 import lightning as L
@@ -6,8 +7,6 @@ import pandas as pd
 import timm
 import torch
 import torchvision.transforms.v2 as transforms_v2
-import wandb
-import os
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision import transforms
@@ -22,6 +21,7 @@ from torchvision.models import (
 from torchvision.utils import save_image
 
 import gorillatracker.type_helper as gtypes
+import wandb
 from gorillatracker.triplet_loss import get_triplet_loss
 
 
@@ -103,12 +103,13 @@ class BaseModule(L.LightningModule):
         # save anchor embeddings of validation step for later analysis in W&B
         embeddings = torch.reshape(anchor_embeddings, (-1, self.embedding_size))
         embeddings = embeddings.cpu()
-        
-        invTrans = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0. ],
-                                                     std = [ 1/0.229, 1/0.224, 1/0.225 ]),
-                                transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
-                                                     std = [ 1., 1., 1. ]),
-                               ])
+
+        invTrans = transforms.Compose(
+            [
+                transforms.Normalize(mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
+                transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
+            ]
+        )
         images = [transforms.ToPILImage()(invTrans(image.cpu())) for image in anchor_tensors]
 
         assert len(self.embeddings_table_columns) == 3
@@ -132,7 +133,7 @@ class BaseModule(L.LightningModule):
             torch.cat(labels, dim=0) if torch.is_tensor(labels[0]) else [label for group in labels for label in group]  # type: ignore
         )
         embeddings = self.forward(vec)
-        
+
         # for i, image in enumerate(images[0]):
         #     image = invTrans(image)
         #     path = "./image_test/"
@@ -140,7 +141,7 @@ class BaseModule(L.LightningModule):
         #         os.mkdir(path)
         #     filename = f"{batch_idx}_{i}.png"
         #     save_image(image, os.path.join(path, filename))
-        
+
         self.add_validation_embeddings(embeddings[:n_achors], flat_labels[:n_achors], images[0])  # type: ignore
         loss, pos_dist, neg_dist = self.triplet_loss(embeddings, flat_labels)  # type: ignore
         self.log("val/loss", loss, on_step=True, sync_dist=True, prog_bar=True)
