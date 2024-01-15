@@ -13,7 +13,6 @@ import wandb
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import LabelEncoder
 from torchmetrics.functional import pairwise_euclidean_distance
-from torchvision.transforms import ToPILImage
 
 import gorillatracker.type_helper as gtypes
 
@@ -48,7 +47,6 @@ class LogEmbeddingsToWandbCallback(L.Callback):
     def on_validation_epoch_end(self, trainer: L.Trainer, pl_module: L.LightningModule) -> None:
         embeddings_table = pl_module.embeddings_table
 
-        log_as_wandb_table(embeddings_table, self.run)
         log_missclassified_images(embeddings_table, self.run)
 
         current_epoch = trainer.current_epoch
