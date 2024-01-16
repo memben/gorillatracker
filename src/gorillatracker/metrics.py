@@ -122,7 +122,7 @@ def log_missclassified_images(embeddings_table: pd.DataFrame, run: Runner) -> No
 
     encoded_labels = le.fit_transform(labels)
 
-    classification_matrix = knn_helper(torch.tensor(embeddings), torch.tensor(encoded_labels), k=5)
+    classification_matrix = knn_helper(torch.tensor(embeddings), torch.tensor(encoded_labels), k=1)
 
     for i in range(len(labels)):
         true_label = labels[i]
