@@ -419,7 +419,7 @@ def knn_naive(val_embeddings: torch.Tensor, val_labels: gtypes.MergedLabels, k: 
     val_embeddings = torch.tensor(val_embeddings)
     val_labels = torch.tensor(val_labels)
 
-    classification_matrix = knn_helper(embeddings, labels, k)
+    classification_matrix = knn_helper(val_embeddings, val_labels, k)
 
     accuracy = tm.functional.accuracy(
         classification_matrix, val_labels, task="multiclass", num_classes=num_classes, average="weighted"
