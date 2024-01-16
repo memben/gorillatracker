@@ -195,7 +195,7 @@ class EfficientNetV2Wrapper(BaseModule):
         )
 
 
-class ConvNeXtV2Wrapper(BaseModule):
+class ConvNeXtV2BaseWrapper(BaseModule):
     def __init__(  # type: ignore
         self,
         **kwargs,
@@ -216,6 +216,20 @@ class ConvNeXtV2Wrapper(BaseModule):
                 transforms_v2.RandomHorizontalFlip(p=0.5),
             ]
         )
+
+
+class ConvNeXtV2HugeWrapper(BaseModule):
+    def __init__(  # type: ignore
+        self,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.model = timm.create_model("convnextv2_huge", pretrained=not self.from_scratch)
+        self.model.reset_classifier(self.embedding_size)
+
+    @classmethod
+    def get_tensor_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
+        return transforms.Resize((224), antialias=True)
 
 
 class VisionTransformerWrapper(BaseModule):
@@ -374,7 +388,8 @@ custom_model_cls = {
     "ViT_Large": VisionTransformerWrapper,
     "ResNet18": ResNet18Wrapper,
     "ResNet152": ResNet152Wrapper,
-    "ConvNeXtV2_Base": ConvNeXtV2Wrapper,
+    "ConvNeXtV2_Base": ConvNeXtV2BaseWrapper,
+    "ConvNeXtV2_Huge": ConvNeXtV2HugeWrapper,
 }
 
 
