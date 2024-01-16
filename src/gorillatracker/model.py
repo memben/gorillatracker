@@ -1,5 +1,4 @@
 import importlib
-import os
 from typing import Callable, Type
 
 import lightning as L
@@ -7,6 +6,7 @@ import pandas as pd
 import timm
 import torch
 import torchvision.transforms.v2 as transforms_v2
+import wandb
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision import transforms
@@ -18,10 +18,8 @@ from torchvision.models import (
     resnet18,
     resnet152,
 )
-from torchvision.utils import save_image
 
 import gorillatracker.type_helper as gtypes
-import wandb
 from gorillatracker.triplet_loss import get_triplet_loss
 
 
