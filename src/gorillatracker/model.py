@@ -293,8 +293,8 @@ class SwinV2LargeWrapper(BaseModule):
             if kwargs.get("from_scratch", False)
             else timm.create_model(swin_model, pretrained=True)
         )
-        self.model.head.fc = torch.nn.Sequential(
-            torch.nn.Linear(in_features=self.model.head.fc.in_features, out_features=self.embedding_size),
+        self.model.head.fc = torch.nn.Linear(
+            in_features=self.model.head.fc.in_features, out_features=self.embedding_size
         )
 
     @classmethod
