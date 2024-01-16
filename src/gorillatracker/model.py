@@ -132,14 +132,6 @@ class BaseModule(L.LightningModule):
         )
         embeddings = self.forward(vec)
 
-        # for i, image in enumerate(images[0]):
-        #     image = invTrans(image)
-        #     path = "./image_test/"
-        #     if not os.path.exists(path):
-        #         os.mkdir(path)
-        #     filename = f"{batch_idx}_{i}.png"
-        #     save_image(image, os.path.join(path, filename))
-
         self.add_validation_embeddings(embeddings[:n_achors], flat_labels[:n_achors], images[0])  # type: ignore
         loss, pos_dist, neg_dist = self.triplet_loss(embeddings, flat_labels)  # type: ignore
         self.log("val/loss", loss, on_step=True, sync_dist=True, prog_bar=True)
