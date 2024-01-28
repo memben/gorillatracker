@@ -7,6 +7,7 @@ import pandas as pd
 import timm
 import torch
 import torchvision.transforms.v2 as transforms_v2
+from facenet_pytorch import InceptionResnetV1
 from print_on_steroids import logger
 from torch.optim import AdamW
 from torchvision import transforms
@@ -217,9 +218,11 @@ class BaseModule(L.LightningModule):
 
         assert len(self.embeddings_table_columns) == 2
         data = {
-            self.embeddings_table_columns[0]: anchor_labels.tolist()  # type: ignore
-            if torch.is_tensor(anchor_labels)  # type: ignore
-            else anchor_labels,
+            self.embeddings_table_columns[0]: (
+                anchor_labels.tolist()  # type: ignore
+                if torch.is_tensor(anchor_labels)  # type: ignore
+                else anchor_labels
+            ),
             self.embeddings_table_columns[1]: [embedding.numpy() for embedding in embeddings],
         }
 
@@ -877,6 +880,41 @@ class ResNet50DinoV2Wrapper(BaseModule):
         )
 
 
+class FaceNetWrapper(BaseModule):
+    def __init__(  # type: ignore
+        self,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.model = InceptionResnetV1(pretrained="vggface2")
+
+        dropout_p = kwargs.get("dropout_p", 0.0)
+        self.model.last_linear = torch.nn.Sequential(
+            torch.nn.BatchNorm1d(1792),
+            torch.nn.Dropout(p=dropout_p),
+            torch.nn.Linear(in_features=1792, out_features=self.embedding_size),
+        )
+        self.model.last_bn = torch.nn.BatchNorm1d(self.embedding_size)
+
+    @classmethod
+    def get_tensor_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
+        return transforms.Compose(
+            [
+                transforms.Resize((192), antialias=True),
+                transforms_v2.Normalize([0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+
+    @classmethod
+    def get_training_transforms(cls) -> Callable[[torch.Tensor], torch.Tensor]:
+        return transforms.Compose(
+            [
+                transforms.RandomErasing(p=0.5, value=(0.707, 0.973, 0.713), scale=(0.02, 0.13)),
+                transforms_v2.RandomHorizontalFlip(p=0.5),
+            ]
+        )
+
+
 # NOTE(liamvdv): Register custom model backbones here.
 custom_model_cls = {
     "EfficientNetV2_Large": EfficientNetV2Wrapper,
@@ -893,6 +931,7 @@ custom_model_cls = {
     "ConvNextClipWrapper": ConvNextClipWrapper,
     "VisionTransformerDinoV2": VisionTransformerDinoV2Wrapper,
     "VisionTransformerClip": VisionTransformerClipWrapper,
+    "FaceNet": FaceNetWrapper,
 }
 
 
