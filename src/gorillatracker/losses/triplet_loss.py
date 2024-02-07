@@ -1,4 +1,4 @@
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Dict, List, Literal
 
 import torch
 import torch.nn.functional as F
@@ -186,7 +186,7 @@ def euclidean_distance_matrix(embeddings: torch.Tensor) -> torch.Tensor:
     # handle numerical stability
     # derivative of the square root operation applied to 0 is infinite
     # we need to handle by setting any 0 to eps
-    mask = (distance_matrix == 0.0).float()  # type: ignore # performed on tensors, __eq__ overwritten
+    mask = (distance_matrix == 0.0).float()  # performed on tensors, __eq__ overwritten
 
     # use this mask to set indices with a value of 0 to eps
     distance_matrix_stable = torch.sqrt(distance_matrix + mask * eps) * (1.0 - mask)
@@ -355,7 +355,7 @@ class L2SPRegularization_Wrapper(nn.Module):
         self.model = model
         self.l2sp_loss = l2.L2_SP(model, path_to_pretrained_weights, alpha, beta)
 
-    def forward(self, *args, **kwargs):
+    def forward(self, *args: List[Any], **kwargs: Dict[str, Any]) -> gtypes.LossPosNegDist:
         standard_loss, anchor_positive_dist_mean, anchor_negative_dist_mean = self.loss(*args, **kwargs)
         l2sp_loss = self.l2sp_loss(self.model)
 
