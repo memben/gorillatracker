@@ -18,7 +18,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from gorillatracker.ssl_pipeline.dataset import GorillaDataset, SSLDataset
+from gorillatracker.ssl_pipeline.dataset import GorillaDataset, GorillaDatasetSmall, SSLDataset
 from gorillatracker.ssl_pipeline.feature_mapper import multiprocess_correlate_videos
 from gorillatracker.ssl_pipeline.helpers import remove_processed_videos
 from gorillatracker.ssl_pipeline.queries import load_processed_videos
@@ -34,7 +34,7 @@ def visualize_pipeline(
     version: str,
     dest_dir: Path,
     n_videos: int = 30,
-    sampled_fps: int = 10,
+    target_output_fps: int = 10,
     max_worker_per_gpu: int = 8,
     gpus: list[int] = [0],
 ) -> None:
@@ -46,7 +46,7 @@ def visualize_pipeline(
         version (str): The version of the pipeline.
         dest_dir (Path): The destination to save the visualizations.
         n_videos (int, optional): The number of videos to visualize. Defaults to 20.
-        sampled_fps (int, optional): The FPS to sample the video at. Defaults to 10.
+        target_output_fps (int, optional): The FPS to sample the video at. Defaults to 10.
         max_worker_per_gpu (int, optional): The maximum number of workers per GPU. Defaults to 8.
         gpus (list[int], optional): The GPUs to use for tracking. Defaults to [0].
 
@@ -65,7 +65,7 @@ def visualize_pipeline(
     random.seed(42)  # For reproducibility
     to_track = random.sample(video_paths, n_videos)
 
-    preprocess_videos(to_track, version, sampled_fps, dataset.engine, dataset.metadata_extractor)
+    preprocess_videos(to_track, version, target_output_fps, dataset.engine, dataset.metadata_extractor)
 
     multiprocess_track_and_store(
         version,
@@ -103,10 +103,10 @@ def visualize_pipeline(
     multiprocess_visualize_video(to_track, version, dataset.engine, dest_dir)
 
 
-if __name__ == "__main__":
+def gpu2_demo() -> None:
     version = "2024-04-09"
     logging.basicConfig(level=logging.INFO)
-    dataset = GorillaDataset("sqlite:///test.db")
+    dataset = GorillaDatasetSmall("sqlite:///test.db")
     # NOTE(memben): for setup only once
     visualize_pipeline(
         dataset,
@@ -117,3 +117,23 @@ if __name__ == "__main__":
         gpus=[0],
     )
     dataset.post_setup(version)
+
+
+def kisz_demo() -> None:
+    version = "2024-04-09"
+    logging.basicConfig(level=logging.INFO)
+    dataset = GorillaDataset("sqlite:///test.db")
+    # NOTE(memben): for setup only once
+    visualize_pipeline(
+        dataset,
+        version,
+        Path("/workspaces/gorillatracker/video_output"),
+        n_videos=20,
+        max_worker_per_gpu=10,
+        gpus=[0],
+    )
+    dataset.post_setup(version)
+
+
+if __name__ == "__main__":
+    kisz_demo()
