@@ -53,7 +53,7 @@ def preprocess_and_store(
     metadata = metadata_extractor(video_path)
     properties = video_properties_extractor(video_path)
     video = Video(
-        path=str(video_path),
+        absolute_path=str(video_path),
         version=version,
         start_time=metadata.start_time,
         width=properties.width,

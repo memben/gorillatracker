@@ -16,9 +16,8 @@ from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import Session
 
-from gorillatracker.ssl_pipeline.feature_mapper import Correlator, one_to_one_correlator
 from gorillatracker.ssl_pipeline.helpers import BoundingBox, extract_meta_data_time
-from gorillatracker.ssl_pipeline.models import Base, Video, VideoFeature
+from gorillatracker.ssl_pipeline.models import Base, Camera, Video, VideoFeature
 from gorillatracker.ssl_pipeline.queries import get_or_create_camera
 from gorillatracker.ssl_pipeline.video_preprocessor import MetadataExtractor, VideoMetadata
 
@@ -31,7 +30,7 @@ class SSLDataset(ABC):
         self._engine = engine
         Base.metadata.create_all(self._engine)
 
-    def feature_models(self) -> list[tuple[Path, dict[str, Any], Correlator, str]]:
+    def feature_models(self) -> list[tuple[Path, dict[str, Any], str]]:
         """Returns a list of feature models to use for adding features of interest (e.g. face detector)"""
         return []
 
@@ -75,6 +74,10 @@ class SSLDataset(ABC):
     def post_setup(self, version: str) -> None:
         """Post setup operations."""
         pass
+
+    def drop_database(self) -> None:
+        if input("Are you sure you want to drop the database? (y/n): ") == "y":
+            Base.metadata.drop_all(self._engine)
 
 
 class GorillaDataset(SSLDataset):
@@ -151,7 +154,9 @@ class GorillaDataset(SSLDataset):
             for video_name, group_id in video_groups:
                 try:
                     video_id = session.execute(
-                        select(Video.video_id).where((Video.version == version) & (Video.path.endswith(video_name)))
+                        select(Video.video_id).where(
+                            (Video.version == version) & (Video.absolute_path.endswith(video_name))
+                        )
                     ).scalar_one()
                 except NoResultFound:
                     continue
@@ -168,10 +173,10 @@ class GorillaDataset(SSLDataset):
                     )
                     session.rollback()
 
-    def feature_models(self) -> list[tuple[Path, dict[str, Any], Correlator, str]]:
+    def feature_models(self) -> list[tuple[Path, dict[str, Any], str]]:
         return [
-            (Path("models/yolov8n_gorilla_face_45.pt"), self._yolo_base_kwargs, one_to_one_correlator, self.FACE_45),
-            (Path("models/yolov8n_gorilla_face_90.pt"), self._yolo_base_kwargs, one_to_one_correlator, self.FACE_90),
+            (Path("models/yolov8n_gorilla_face_45.pt"), self._yolo_base_kwargs, self.FACE_45),
+            (Path("models/yolov8n_gorilla_face_90.pt"), self._yolo_base_kwargs, self.FACE_90),
         ]
 
     @staticmethod
@@ -230,6 +235,24 @@ class GorillaDatasetSmall(SSLDataset):
     def __init__(self, db_uri: str = DB_URI) -> None:
         super().__init__(db_uri)
 
+    def setup_database(self) -> None:
+        Base.metadata.create_all(self._engine)
+
+    def setup_cameras(self) -> None:
+        df = pd.read_csv("data/ground_truth/cxl/misc/Kamaras_coorHPF.csv", sep=";", decimal=",")
+        df["Name"] = df["Name"].str.rstrip("x")
+        with Session(self._engine) as session:
+            for _, row in df.iterrows():
+                camera = Camera(name=row["Name"], latitude=row["lat"], longitude=row["long"])
+                session.add(camera)
+            session.commit()
+
+    def feature_models(self) -> list[tuple[Path, dict[str, Any], str]]:
+        return [
+            (Path("models/yolov8n_gorilla_face_45.pt"), self._yolo_base_kwargs, self.FACE_45),
+            (Path("models/yolov8n_gorilla_face_90.pt"), self._yolo_base_kwargs, self.FACE_90),
+        ]
+
     @property
     def video_paths(self) -> list[Path]:
         return list(Path("/workspaces/gorillatracker/video_data").glob("*.mp4"))
@@ -283,14 +306,16 @@ class GorillaDatasetSmall(SSLDataset):
                     video_name = os.path.splitext(row["File"])[0] + ".mp4"  # csv has .MP4 instead of .mp4
                     try:
                         video_id = session.execute(
-                            select(Video.video_id).where((Video.version == version) & (Video.path.endswith(video_name)))
+                            select(Video.video_id).where(
+                                (Video.version == version) & (Video.absolute_path.endswith(video_name))
+                            )
                         ).scalar_one()
                     except NoResultFound:
                         continue
                     except MultipleResultsFound as e:
                         log.error(f"Multiple videos found in DB for {video_name} with version: {version}")
                         raise e
-                    video_feature = VideoFeature(video_id=video_id, type=feature_type, value=social_group)
+                    video_feature = VideoFeature(video_id=video_id, feature_type=feature_type, value=social_group)
                     session.add(video_feature)
                     try:
                         session.commit()
@@ -299,12 +324,6 @@ class GorillaDatasetSmall(SSLDataset):
                             f"Failed to add social group {social_group} for video {video_name} due to entry with video_id:{video_id} type:{feature_type} already in DB"
                         )
                         session.rollback()
-
-    def feature_models(self) -> list[tuple[Path, dict[str, Any], Correlator, str]]:
-        return [
-            (Path("models/yolov8n_gorilla_face_45.pt"), self._yolo_base_kwargs, one_to_one_correlator, self.FACE_45),
-            (Path("models/yolov8n_gorilla_face_90.pt"), self._yolo_base_kwargs, one_to_one_correlator, self.FACE_90),
-        ]
 
     @staticmethod
     def get_video_metadata(video_path: Path) -> VideoMetadata:

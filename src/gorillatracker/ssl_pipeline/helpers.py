@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, time
 from itertools import groupby
 from pathlib import Path
-from typing import Generator, Optional, Sequence
+from typing import Generator, Iterator, Optional, Sequence
 
 import cv2
 import easyocr
@@ -45,7 +45,7 @@ def video_frame_iterator(cap: cv2.VideoCapture, frame_step: int) -> Generator[Vi
 
 
 @contextmanager
-def video_reader(video_path: Path, frame_step: int = 1) -> Generator[Generator[VideoFrame, None, None], None, None]:
+def video_reader(video_path: Path, frame_step: int = 1) -> Iterator[Generator[VideoFrame, None, None]]:
     """
     Context manager for reading frames from a video file.
 
@@ -198,15 +198,17 @@ def _extract_time(time_stamp: str) -> time:
         raise ValueError("Could not extract time stamp from frame")
 
 
-def extract_meta_data_time(video_path: Path) -> datetime:
+def extract_meta_data_time(video_path: Path) -> Optional[datetime]:
     """
     Extracts the creation time of the video from the metadata.
     """
     time_stamp = _extract_iso_timestamp(video_path)
+    if time_stamp is None:
+        return None
     return datetime.fromisoformat(time_stamp.replace("Z", "+00:00"))
 
 
-def _extract_iso_timestamp(video_path: Path) -> str:
+def _extract_iso_timestamp(video_path: Path) -> Optional[str]:
     ffprobe_command = [
         "ffprobe",
         "-v",
@@ -233,4 +235,4 @@ def _extract_iso_timestamp(video_path: Path) -> str:
         return creation_time
     except KeyError:
         log.error(f"Creation time not found in video metadata for {video_path}")
-        raise ValueError("Creation time not found in video metadata.")
+        return None

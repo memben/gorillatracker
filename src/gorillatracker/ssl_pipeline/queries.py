@@ -2,16 +2,18 @@
 This module contains pre-defined database queries.
 """
 
-from datetime import datetime
+import datetime as dt
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterator, Optional, Sequence
 
-from sqlalchemy import ColumnElement, Select, alias, func, select
+from sqlalchemy import ColumnElement, Select, alias, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from gorillatracker.ssl_pipeline.models import (
     Camera,
-    ProcessedVideoFrameFeature,
+    Task,
+    TaskStatus,
+    TaskType,
     Tracking,
     TrackingFrameFeature,
     Video,
@@ -65,7 +67,7 @@ def min_count_filter(
     def filter(self, frame_features: Iterator[TrackingFrameFeature]) -> Iterator[TrackingFrameFeature]:
         tracking_id_grouped = group_by_tracking_id(list(frame_features))
         predicate = (
-            lambda features: len([x for x in features if x.type == self.feature_type]) >= self.min_feature_count
+            lambda features: len([x for x in features if x.feature_type == self.feature_type]) >= self.min_feature_count
             if self.feature_type is not None
             else len(features) >= self.min_feature_count
         )
@@ -82,7 +84,7 @@ def min_count_filter(
     )
 
     if feature_type is not None:
-        subquery = subquery.where(TrackingFrameFeature.type == feature_type)
+        subquery = subquery.where(TrackingFrameFeature.feature_type == feature_type)
 
     query = query.where(TrackingFrameFeature.tracking_id.in_(subquery))
 
@@ -98,10 +100,10 @@ def feature_type_filter(
     Equivalent to python:
     ```python
     def filter(self, frame_features: Iterator[TrackingFrameFeature]) -> Iterator[TrackingFrameFeature]:
-        return filter(lambda x: x.type in self.feature_types, frame_features)
+        return filter(lambda x: x.feature_type in self.feature_types, frame_features)
     ```
     """
-    return query.where(TrackingFrameFeature.type.in_(feature_types))
+    return query.where(TrackingFrameFeature.feature_type.in_(feature_types))
 
 
 def confidence_filter(
@@ -131,14 +133,16 @@ def load_tracked_features(session: Session, video_id: int, feature_types: list[s
 
 
 def load_video(session: Session, video_path: Path, version: str) -> Video:
-    return session.execute(select(Video).where(Video.path == str(video_path), Video.version == version)).scalar_one()
+    return session.execute(
+        select(Video).where(Video.absolute_path == str(video_path), Video.version == version)
+    ).scalar_one()
 
 
 def load_videos(session: Session, video_paths: list[Path], version: str) -> Sequence[Video]:
     return (
         session.execute(
             select(Video).where(
-                Video.path.in_([str(video_path) for video_path in video_paths]), Video.version == version
+                Video.absolute_path.in_([str(video_path) for video_path in video_paths]), Video.version == version
             )
         )
         .scalars()
@@ -146,15 +150,8 @@ def load_videos(session: Session, video_paths: list[Path], version: str) -> Sequ
     )
 
 
-def load_processed_videos(session: Session, version: str, required_feature_types: list[str]) -> Sequence[Video]:
+def load_preprocessed_videos(session: Session, version: str) -> Sequence[Video]:
     stmt = select(Video).where(Video.version == version)
-    if required_feature_types:
-        stmt = (
-            stmt.join(ProcessedVideoFrameFeature)
-            .where(ProcessedVideoFrameFeature.type.in_(required_feature_types))
-            .group_by(Video.video_id)
-            .having(func.count(ProcessedVideoFrameFeature.type.distinct()) == len(required_feature_types))
-        )
     return session.execute(stmt).scalars().all()
 
 
@@ -201,6 +198,64 @@ def find_overlapping_trackings(session: Session) -> Sequence[tuple[Tracking, Tra
     return [(row[0], row[1]) for row in overlapping_trackings]
 
 
+def get_next_task(
+    session: Session,
+    task_type: TaskType,
+    max_retries: int = 0,
+    task_timeout: dt.timedelta = dt.timedelta(days=1),
+    task_subtype: str = "",
+) -> Iterator[Task]:
+    """Yields and handles task in a transactional manner. Useable in a multiprocessing context.
+    Each session is committed after a successful task completion, and rolled back if an exception is raised by this function.
+    Do **not** commit any changes that should be rolled back on exception.
+
+    Args:
+        session (Session): The database session.
+        task_type (str): The type of the task.
+        max_retries (int): The maximum number of retries, for failed or timed out tasks. Defaults to 0.
+        task_timeout (dt.timedelta): The maximum time a task can be in processing state before being considered timed out. Defaults to one day.
+    """
+    while True:
+        timeout_threshold = dt.datetime.now(dt.timezone.utc) - task_timeout
+        pending_condition = Task.status == TaskStatus.PENDING
+        processing_condition = (
+            (Task.status == TaskStatus.PROCESSING)
+            & (Task.updated_at < timeout_threshold)
+            & (Task.retries < max_retries)
+        )
+        failed_condition = (Task.status == TaskStatus.FAILED) & (Task.retries < max_retries)
+
+        stmt = (
+            select(Task)
+            .where(
+                Task.task_type == task_type,
+                Task.task_subtype == task_subtype,
+                or_(pending_condition, processing_condition, failed_condition),
+            )
+            .with_for_update(skip_locked=True)
+        )
+
+        task = session.execute(stmt).scalars().first()
+        if task is None:
+            break
+
+        if task.status != TaskStatus.PENDING:
+            task.retries += 1
+        task.status = TaskStatus.PROCESSING
+        session.commit()
+
+        try:
+            yield task
+        except Exception:
+            session.rollback()
+            task.status = TaskStatus.FAILED
+            session.commit()
+            raise
+        else:
+            task.status = TaskStatus.COMPLETED
+            session.commit()
+
+
 def great_circle_distance(
     left_latitude: ColumnElement[float],
     left_longitude: ColumnElement[float],
@@ -215,7 +270,9 @@ def great_circle_distance(
     )
 
 
-def time_diff(left_datetime: ColumnElement[datetime], right_datetime: ColumnElement[datetime]) -> ColumnElement[float]:
+def time_diff(
+    left_datetime: ColumnElement[dt.datetime], right_datetime: ColumnElement[dt.datetime]
+) -> ColumnElement[float]:
     return func.abs(func.julianday(left_datetime) - func.julianday(right_datetime)) * 24
 
 
@@ -270,7 +327,7 @@ def social_group_negatives(session: Session, version: str) -> Sequence[tuple[Vid
     subquery = (
         select(Video.video_id, VideoFeature.value)
         .join(VideoFeature, Video.video_id == VideoFeature.video_id)
-        .where(Video.version == version, VideoFeature.type == "Social Group")
+        .where(Video.version == version, VideoFeature.feature_type == "Social Group")
         # Note: string can change
     ).subquery()
 
@@ -303,7 +360,7 @@ if __name__ == "__main__":
     with session_cls() as session:
         video_negatives = social_group_negatives(session, version)
         print(video_negatives[:10])
-        social_groups = session.execute(select(VideoFeature).where(VideoFeature.type == "Social Group")).all()
+        social_groups = session.execute(select(VideoFeature).where(VideoFeature.feature_type == "Social Group")).all()
         print(social_groups)
         video_negatives = travel_distance_negatives(session, version, 10)
         print(video_negatives[:10])
