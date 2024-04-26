@@ -24,6 +24,7 @@ from gorillatracker.ssl_pipeline.video_preprocessor import MetadataExtractor, Vi
 log = logging.getLogger(__name__)
 
 
+# TODO(memben): rename this, name not changed for GitHub PR diff for now
 class SSLDataset(ABC):
     def __init__(self, db_uri: str) -> None:
         engine = create_engine(db_uri)  # , echo=True)
