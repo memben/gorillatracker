@@ -167,6 +167,8 @@ class BaseModule(L.LightningModule):
         self.dropout_p = dropout_p
         self.loss_mode = loss_mode
 
+        self.quant = torch.quantization.QuantStub()
+
         ##### Create Table embeddings_table
         self.embeddings_table_columns = [
             "label",
@@ -224,6 +226,7 @@ class BaseModule(L.LightningModule):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.quant(x)
         return self.model(x)
 
     def on_train_epoch_start(self) -> None:
