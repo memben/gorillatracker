@@ -51,6 +51,9 @@ jobs:
       #     git push origin $BRANCH_NAME
 
   test:
+    # TODO(liamvdv): DISABLE DUE TO VERY LARGE INSTALL, LEADING TO 'no space on disk' GitHub Standard Runner ERRORs.
+    #                Consider adding pre-commit to enforce these checks before pushing.
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
