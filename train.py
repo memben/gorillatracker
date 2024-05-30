@@ -62,6 +62,8 @@ def main(args: TrainingArgs) -> None:
             transforms=model_transforms,
             training_transforms=model_cls.get_training_transforms(),
             data_dir=str(args.data_dir),
+            additional_dataset_class_ids=args.additional_val_dataset_classes,
+            additional_data_dirs=args.additional_val_data_dirs,
         )
     else:
         dm = get_data_module(
@@ -71,6 +73,8 @@ def main(args: TrainingArgs) -> None:
             args.loss_mode,
             model_transforms,
             model_cls.get_training_transforms(),
+            args.additional_val_dataset_classes,
+            args.additional_val_data_dirs,
         )
 
     ################# Construct model ##############
@@ -87,6 +91,7 @@ def main(args: TrainingArgs) -> None:
         knn_with_train=args.knn_with_train,
         wandb_run=wandb_logger.experiment,
         dm=dm,
+        use_ssl=args.use_ssl,
     )
 
     wandb_disk_cleanup_callback = WandbCleanupDiskAndCloudSpaceCallback(
@@ -94,14 +99,14 @@ def main(args: TrainingArgs) -> None:
     )
     checkpoint_callback = ModelCheckpoint(
         filename="snap-{epoch}-samples-loss-{val/loss:.2f}",
-        monitor="val/loss",
+        monitor="val/loss/dataloader_0",
         mode="min",
         auto_insert_metric_name=False,
         every_n_epochs=int(args.save_interval),
     )
 
     early_stopping = EarlyStopping(
-        monitor="val/loss",
+        monitor="val/loss/dataloader_0",
         mode="min",
         min_delta=args.min_delta,
         patience=args.early_stopping_patience,
