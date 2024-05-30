@@ -1,9 +1,7 @@
 import warnings
-from pathlib import Path
 from typing import Union
 
 import torch
-import wandb
 from lightning import seed_everything
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.plugins import BitsandbytesPrecision
@@ -110,7 +108,7 @@ def main(args: TrainingArgs) -> None:
     )
 
     callbacks = [
-        checkpoint_callback,
+        checkpoint_callback,  # keep this at the top
         wandb_disk_cleanup_callback,
         lr_monitor,
         early_stopping,
@@ -164,28 +162,6 @@ def main(args: TrainingArgs) -> None:
         model, trainer = train_and_validate_model(
             args=args, dm=dm, model=model, callbacks=callbacks, wandb_logger=wandb_logger
         )
-
-    ########### Save checkpoint ###########
-    if current_process_rank == 0:
-        logger.info("Trying to save checkpoint....")
-
-        assert checkpoint_callback.dirpath is not None
-        save_path = str(Path(checkpoint_callback.dirpath) / "last_model_ckpt.ckpt")
-        trainer.save_checkpoint(save_path)
-        logger.info(f"Checkpoint saved to {save_path}")
-
-        if args.save_model_to_wandb:
-            logger.info("Collecting PL checkpoint for wandb...")
-            artifact = wandb.Artifact(name=f"model-{wandb_logger.experiment.id}", type="model")
-            artifact.add_file(save_path, name="model.ckpt")
-
-            logger.info("Pushing to wandb...")
-            aliases = ["train_end", "latest"]
-            wandb_logger.experiment.log_artifact(artifact, aliases=aliases)
-
-            logger.success("Saving finished!")
-    else:
-        logger.info("Rank is not 0, skipping checkpoint saving...")
 
 
 if __name__ == "__main__":
