@@ -52,7 +52,7 @@ class LogEmbeddingsToWandbCallback(L.Callback):
         self.run = wandb_run
         self.use_quantization_aware_training = use_quantization_aware_training
         self.use_ssl = use_ssl
-        self.kfold_k = kfold_k if kfold_k is not None else None
+        self.kfold_k = kfold_k
         if knn_with_train:
             dm.setup("fit")
             self.train_dataloader = dm.train_dataloader()
@@ -248,13 +248,15 @@ def evaluate_embeddings(
         for metric_name, metric in metrics.items()
     }
 
-    kfold_str = f"/fold-{kfold_k}/" if kfold_k is not None else "/"
+    kfold_str_prefix = f"fold-{kfold_k}/" if kfold_k is not None else ""
     for metric_name, result in results.items():
         if isinstance(result, dict):
             for key, value in result.items():
-                wandb.log({f"{embedding_name}{kfold_str}{metric_name}/dataloader_{dataloader_idx}/{key}": value})
+                wandb.log(
+                    {f"{kfold_str_prefix}{embedding_name}/{metric_name}/dataloader_{dataloader_idx}/{key}": value}
+                )
         else:
-            wandb.log({f"{embedding_name}{kfold_str}{metric_name}/dataloader_{dataloader_idx}/": result})
+            wandb.log({f"{kfold_str_prefix}{embedding_name}/{metric_name}/dataloader_{dataloader_idx}": result})
 
     return results
 
