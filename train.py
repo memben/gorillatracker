@@ -63,14 +63,14 @@ def main(args: TrainingArgs) -> None:
     # TODO(memben): Unify SSLDatamodule and NletDataModule
     dm: Union[SSLDataModule, NletDataModule]
     if args.use_ssl:
+        assert args.split_path is not None, "Split path must be provided for SSL training."
         ssl_config = SSLConfig(
             tff_selection=args.tff_selection,
-            n_videos=args.n_videos,
             n_samples=args.n_samples,
             feature_types=args.feature_types,
             min_confidence=args.min_confidence,
             min_images_per_tracking=args.min_images_per_tracking,
-            split=None,
+            split_path=args.split_path,
         )
         dm = SSLDataModule(
             ssl_config=ssl_config,
@@ -102,15 +102,6 @@ def main(args: TrainingArgs) -> None:
     model_transforms = model.get_tensor_transforms()
     if args.data_resize_transform is not None:
         model_transforms = Compose([Resize(args.data_resize_transform, antialias=True), model_transforms])
-    dm = get_data_module(
-        args.dataset_class,
-        str(args.data_dir),
-        args.batch_size,
-        args.loss_mode,
-        # args.video_data,
-        model_transforms,
-        model.get_training_transforms(),
-    )
 
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
