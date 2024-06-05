@@ -38,6 +38,7 @@ def get_data_module(
     data_dir: str,
     batch_size: int,
     loss_mode: str,
+    workers: int,
     model_transforms: gtypes.Transform,
     training_transforms: gtypes.Transform = None,  # type: ignore
     additional_dataset_class_ids: Optional[List[str]] = None,
@@ -85,6 +86,7 @@ def get_data_module(
             data_dir,
             batch_size,
             dataset_class,
+            workers=workers,
             transforms=transforms,
             training_transforms=training_transforms,
             additional_dataset_classes=dataset_classes,

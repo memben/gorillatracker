@@ -89,6 +89,7 @@ def main(args: TrainingArgs) -> None:
             str(args.data_dir),
             args.batch_size,
             args.loss_mode,
+            args.workers,
             model_transforms,
             model_cls.get_training_transforms(),
             args.additional_val_dataset_classes,
