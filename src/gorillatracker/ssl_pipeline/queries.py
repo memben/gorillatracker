@@ -6,7 +6,7 @@ import datetime as dt
 import logging
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterator, Optional, Sequence
 
 from sqlalchemy import Select, alias, and_, func, or_, select, update
 from sqlalchemy.orm import Session
@@ -134,6 +134,24 @@ def confidence_filter(
     ```
     """
     query = query.where(TrackingFrameFeature.confidence >= min_confidence)
+    return query
+
+
+def bbox_filter(
+    query: Select[tuple[TrackingFrameFeature]],
+    min_width: Optional[int],
+    max_width: Optional[int],
+    min_height: Optional[int],
+    max_height: Optional[int],
+) -> Select[tuple[TrackingFrameFeature]]:
+    if min_width is not None:
+        query = query.where(TrackingFrameFeature.bbox_width >= min_width)
+    if max_width is not None:
+        query = query.where(TrackingFrameFeature.bbox_width <= max_width)
+    if min_height is not None:
+        query = query.where(TrackingFrameFeature.bbox_height >= min_height)
+    if max_height is not None:
+        query = query.where(TrackingFrameFeature.bbox_height <= max_height)
     return query
 
 
@@ -274,6 +292,9 @@ if __name__ == "__main__":
         query = multiple_videos_filter(video_ids[:200])
         query = associated_filter(query)
         query = confidence_filter(query, 0.5)
-        query = min_count_filter(query, 3)
-        features = session.execute(query).scalars().all()
-        print(len(features))
+        query = bbox_filter(query, 10, 100, 10, 100)
+        query = min_count_filter(query, 10)
+        tffs = session.execute(query).scalars().all()
+        # print out some bbox widths and heights
+        for tff in tffs:
+            print(tff.bbox_width, tff.bbox_height)
