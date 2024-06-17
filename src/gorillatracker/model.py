@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms.v2 as transforms_v2
 from facenet_pytorch import InceptionResnetV1
+from lightning.pytorch.utilities.types import LRSchedulerConfigType
 from print_on_steroids import logger
 from torch.optim.adamw import AdamW
 from torchvision import transforms
@@ -383,7 +384,7 @@ class BaseModule(L.LightningModule):
 
         self.add_validation_embeddings(anchor_ids, embeddings[:batch_size], flat_labels[:batch_size], dataloader_idx)
         if "softmax" not in self.loss_mode and not self.use_dist_term:
-            loss, pos_dist, neg_dist = self.loss_module_val(embeddings, flat_labels, images)
+            loss, pos_dist, neg_dist = self.loss_module_val(embeddings=embeddings, labels=flat_labels, images=images)  # type: ignore
             kfold_prefix = f"fold-{self.kfold_k}/" if self.kfold_k is not None else ""
             self.log(
                 f"{dataloader_name}/{kfold_prefix}val/loss",
@@ -465,7 +466,7 @@ class BaseModule(L.LightningModule):
                 lr_lambda=self.lambda_schedule,
             )
             if self.stepwise_schedule:
-                lr_scheduler = {
+                lr_scheduler: LRSchedulerConfigType = {
                     "scheduler": lambda_scheduler,
                     "interval": "step",
                     "frequency": self.lr_interval,
@@ -730,10 +731,10 @@ class VisionTransformerWrapper(BaseModule):
         super().__init__(**kwargs)
         self.model = timm.create_model("vit_large_patch16_224", pretrained=not self.from_scratch)
         # self.model.reset_classifier(self.embedding_size) # TODO
-        self.model.head.fc = torch.nn.Sequential(
-            torch.nn.BatchNorm1d(self.model.head.fc.in_features),
+        self.model.head = torch.nn.Sequential(
+            torch.nn.BatchNorm1d(self.model.head.in_features),
             torch.nn.Dropout(p=self.dropout_p),
-            torch.nn.Linear(in_features=self.model.head.fc.in_features, out_features=self.embedding_size),
+            torch.nn.Linear(in_features=self.model.head.in_features, out_features=self.embedding_size),
             torch.nn.BatchNorm1d(self.embedding_size),
         )
         self.set_losses(self.model, **kwargs)
@@ -769,11 +770,11 @@ class VisionTransformerDinoV2Wrapper(BaseModule):
     ) -> None:
         super().__init__(**kwargs)
         self.model = timm.create_model("vit_large_patch14_dinov2.lvd142m", pretrained=not self.from_scratch)
-        # self.model.reset_classifier(self.embedding_size) # TODO
-        self.model.head.fc = torch.nn.Sequential(
-            torch.nn.BatchNorm1d(self.model.head.fc.in_features),
+        self.model.reset_classifier(self.embedding_size)
+        self.model.head = torch.nn.Sequential(
+            torch.nn.BatchNorm1d(self.model.head.in_features),
             torch.nn.Dropout(p=self.dropout_p),
-            torch.nn.Linear(in_features=self.model.head.fc.in_features, out_features=self.embedding_size),
+            torch.nn.Linear(in_features=self.model.head.in_features, out_features=self.embedding_size),
             torch.nn.BatchNorm1d(self.embedding_size),
         )
         self.set_losses(self.model, **kwargs)
@@ -796,10 +797,10 @@ class VisionTransformerClipWrapper(BaseModule):
         super().__init__(**kwargs)
         self.model = timm.create_model("vit_base_patch16_clip_224.metaclip_2pt5b", pretrained=not self.from_scratch)
         # self.model.reset_classifier(self.embedding_size) # TODO
-        self.model.head.fc = torch.nn.Sequential(
-            torch.nn.BatchNorm1d(self.model.head.fc.in_features),
+        self.model.head = torch.nn.Sequential(
+            torch.nn.BatchNorm1d(self.model.head.in_features),
             torch.nn.Dropout(p=self.dropout_p),
-            torch.nn.Linear(in_features=self.model.head.fc.in_features, out_features=self.embedding_size),
+            torch.nn.Linear(in_features=self.model.head.in_features, out_features=self.embedding_size),
             torch.nn.BatchNorm1d(self.embedding_size),
         )
 
