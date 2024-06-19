@@ -29,7 +29,7 @@ import gorillatracker.type_helper as gtypes
 from gorillatracker.data.nlet import NletDataModule
 from gorillatracker.data.utils import flatten_batch, lazy_batch_size
 from gorillatracker.losses.get_loss import get_loss
-from gorillatracker.metrics import evaluate_embeddings, knn, log_train_images_to_wandb, pca, tsne
+from gorillatracker.metrics import evaluate_embeddings, knn, knn_ssl, log_train_images_to_wandb, pca, tsne
 from gorillatracker.model_miewid import GeM, load_miewid_model  # type: ignore
 from gorillatracker.utils.labelencoder import LinearSequenceEncoder
 
@@ -564,6 +564,16 @@ class BaseModule(L.LightningModule):
             }
             if "CXL" in dataloader_name
             else {}
+        )
+        metrics = (
+            {
+                "knn_ssl": partial(knn_ssl, k=1, dm=self.dm),
+                "knn5_ssl": partial(knn_ssl, k=5, dm=self.dm),
+                "knn_ssl_macro": partial(knn_ssl, k=1, dm=self.dm, average="macro"),
+                "knn5_ssl_macro": partial(knn_ssl, k=5, dm=self.dm, average="macro"),
+            }
+            if "ssl" in dataloader_name.lower()
+            else metrics
         )
 
         metrics = metrics if not self.fast_dev_run else {}
