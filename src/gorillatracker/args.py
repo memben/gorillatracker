@@ -156,5 +156,8 @@ class TrainingArgs:
             self.height_range[0] is None or self.height_range[1] is None or self.height_range[0] <= self.height_range[1]
         ):
             raise ValueError("min_height should be <= max_height")
+        assert all(
+            s in ["body", "face_90", "face_45", "body_with_face"] for s in self.feature_types
+        ), "Invalid feature type"
         if self.grad_clip <= 0:
             self.grad_clip = None
