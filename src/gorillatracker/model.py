@@ -1,4 +1,3 @@
-import importlib
 from functools import partial
 from typing import Any, Callable, Dict, Literal, Optional, Tuple, Type
 
@@ -329,6 +328,17 @@ class BaseModule(L.LightningModule):
         flat_images, flat_labels_onehot = in_batch_mixup(flat_images, flat_labels_onehot)
 
         return flat_images, flat_labels_onehot
+
+    def predict_step(
+        self, batch: gtypes.NletBatch, batch_idx: int, dataloader_idx: int = 0
+    ) -> tuple[list[gtypes.Id], torch.Tensor, torch.Tensor]:
+        batch_size = lazy_batch_size(batch)
+        flat_ids, flat_images, flat_labels = flatten_batch(batch)
+        anchor_ids = list(flat_ids[:batch_size])
+        anchor_images = flat_images[:batch_size]
+        anchor_labels = flat_labels[:batch_size]
+        embeddings = self.forward(anchor_images)
+        return anchor_ids, embeddings, anchor_labels
 
     def training_step(self, batch: gtypes.NletBatch, batch_idx: int) -> torch.Tensor:
         _, images, _ = batch
@@ -1254,7 +1264,5 @@ custom_model_cls = {
 
 def get_model_cls(model_name: str) -> Type[BaseModule]:
     model_cls = custom_model_cls.get(model_name, None)
-    if not model_cls:
-        module, cls = model_name.rsplit(".", 1)
-        model_cls = getattr(importlib.import_module(module), cls)
+    assert model_cls is not None, f"Model {model_name} not found in custom_model_cls"
     return model_cls
